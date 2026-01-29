@@ -1,0 +1,882 @@
+{
+  "metadata": {
+    "title": "Effective Go Principles",
+    "version": "1.0.0",
+    "source": "https://go.dev/doc/effective_go",
+    "description": "Comprehensive guide to Go programming principles, patterns, and best practices",
+    "lastUpdated": "2026-01-09"
+  },
+  "decisionTrees": {
+    "pointerVsValueReceiver": {
+      "title": "When to Use Pointer vs Value Receiver",
+      "description": "Decision tree for choosing between pointer and value receivers for methods",
+      "flowchart": [
+        {
+          "question": "Does the method need to modify the receiver?",
+          "yes": "Use pointer receiver",
+          "no": "Continue"
+        },
+        {
+          "question": "Is the receiver a large struct?",
+          "yes": "Use pointer receiver (avoid copying)",
+          "no": "Continue"
+        },
+        {
+          "question": "Does the type have other methods with pointer receivers?",
+          "yes": "Use pointer receiver (consistency)",
+          "no": "Continue"
+        },
+        {
+          "question": "Does the receiver contain sync.Mutex or similar non-copyable types?",
+          "yes": "Use pointer receiver (must not copy)",
+          "no": "Use value receiver"
+        }
+      ],
+      "rules": [
+        "If any method needs a pointer receiver, all methods should use pointer receivers for consistency",
+        "Basic types, slices, and small structs can use value receivers",
+        "Maps, channels, and functions are reference types - either works but value is common"
+      ]
+    },
+    "sliceVsArray": {
+      "title": "When to Use Slice vs Array",
+      "description": "Decision tree for choosing between slices and arrays",
+      "recommendation": "Almost always use slices unless you need a fixed size for a specific reason",
+      "useArray": [
+        "Size is fixed and known at compile time",
+        "Want to guarantee fixed capacity",
+        "Optimizing for stack allocation",
+        "Part of a struct where size is semantically important"
+      ],
+      "useSlice": [
+        "Size is dynamic or unknown at compile time",
+        "Need to pass to functions efficiently",
+        "Need append/growth capabilities",
+        "Working with variable-length data"
+      ]
+    },
+    "newVsMake": {
+      "title": "When to Use new() vs make()",
+      "description": "Decision tree for memory allocation",
+      "useNew": [
+        "Allocating any type and getting a pointer to zeroed memory",
+        "Creating pointer to struct, int, bool, etc.",
+        "Want zero value initialization"
+      ],
+      "useMake": [
+        "Creating slices (with length and capacity)",
+        "Creating maps (with optional capacity hint)",
+        "Creating channels (with optional buffer size)"
+      ],
+      "rule": "make() is only for slices, maps, and channels. Use new() for everything else."
+    },
+    "errorVsPanic": {
+      "title": "When to Use Error vs Panic",
+      "description": "Decision tree for error handling strategy",
+      "useError": [
+        "Expected error conditions (file not found, network error, etc.)",
+        "Library code - almost always return errors",
+        "Recoverable conditions",
+        "API boundaries"
+      ],
+      "usePanic": [
+        "Truly exceptional conditions (programming errors)",
+        "Initialization failures in package init()",
+        "Unrecoverable state corruption",
+        "Setup failures that prevent program operation"
+      ],
+      "rule": "Default to returning errors. Panic only for programmer mistakes or unrecoverable failures."
+    }
+  },
+  "principles": [
+    {
+      "name": "gofmt",
+      "category": "Formatting",
+      "definition": "Use gofmt to automatically format Go code according to standard conventions. It eliminates debates about formatting and ensures consistency across all Go code.",
+      "keyCharacteristics": [
+        "Tabs for indentation",
+        "No line length limit (but reasonable line lengths preferred)",
+        "Less vertical whitespace than typical",
+        "Automated and non-configurable",
+        "Idempotent formatting"
+      ],
+      "whenToApply": "Always. Run gofmt on all Go code before committing.",
+      "codeSmells": [
+        "Manually formatted code with spaces instead of tabs",
+        "Inconsistent brace placement",
+        "Irregular spacing around operators",
+        "Code that doesn't pass gofmt check"
+      ],
+      "refactoringGuidance": "Run 'gofmt -w .' to format all files, or integrate gofmt/goimports into your editor to format on save.",
+      "goodExample": "// Automatically formatted by gofmt\nfunc calculate(x, y int) int {\n\treturn x + y\n}",
+      "badExample": "// Manually formatted, inconsistent\nfunc calculate(x,y int) int{\n  return x+y\n}"
+    },
+    {
+      "name": "Commentary",
+      "category": "Documentation",
+      "definition": "Every package should have a package comment (a block comment preceding the package clause). For multi-file packages, the package comment only needs to be present in one file. Doc comments should be complete sentences starting with the name being declared.",
+      "keyCharacteristics": [
+        "Complete sentences",
+        "Start with the name being documented",
+        "Appear directly before the declaration",
+        "No blank line between comment and declaration",
+        "Package comment can be in any file but typically in doc.go or main file"
+      ],
+      "whenToApply": "For all exported identifiers (packages, types, functions, methods, constants, variables).",
+      "codeSmells": [
+        "Missing doc comments on exported identifiers",
+        "Comments that don't start with the identifier name",
+        "Incomplete sentences or fragmented comments",
+        "Blank lines between comment and declaration"
+      ],
+      "refactoringGuidance": "Add proper doc comments to all exported identifiers. Use tools like 'golint' to identify missing documentation.",
+      "goodExample": "// Package math provides basic mathematical operations.\npackage math\n\n// Add returns the sum of a and b.\nfunc Add(a, b int) int {\n\treturn a + b\n}",
+      "badExample": "package math\n\n// adds two numbers\nfunc Add(a, b int) int {\n\treturn a + b\n}"
+    },
+    {
+      "name": "Package Names",
+      "category": "Naming",
+      "definition": "Package names should be short, concise, lowercase, single-word names without underscores or mixedCaps. The package name is part of the identifier when used, so choose names that work well in that context.",
+      "keyCharacteristics": [
+        "Short and concise",
+        "Lowercase only",
+        "Single word (no underscores)",
+        "No need to use 'util' or 'common'",
+        "Name reflects what package provides, not what it contains"
+      ],
+      "whenToApply": "When creating any new package.",
+      "codeSmells": [
+        "Package names with underscores: 'user_service'",
+        "MixedCaps package names: 'userService'",
+        "Generic names: 'util', 'common', 'helpers'",
+        "Redundant names: 'httputil' in 'net/http/httputil' (imports as 'httputil')"
+      ],
+      "refactoringGuidance": "Rename packages to be short, single-word, lowercase names. Consider how the package name will appear when imported and used.",
+      "goodExample": "package http\n\n// Used as: http.Get(...)\n\npackage bufio\n\n// Used as: bufio.NewReader(...)",
+      "badExample": "package http_utils\n\npackage HTTPHelper\n\npackage common"
+    },
+    {
+      "name": "Exported Names",
+      "category": "Naming",
+      "definition": "The visibility of a name outside a package is determined by whether its first character is uppercase. Use this to control the API surface and encapsulation.",
+      "keyCharacteristics": [
+        "Uppercase first character = exported (public)",
+        "Lowercase first character = unexported (private to package)",
+        "Applies to all identifiers: types, functions, methods, constants, variables",
+        "Package name is always lowercase, regardless of export status"
+      ],
+      "whenToApply": "When declaring any identifier in Go.",
+      "codeSmells": [
+        "Exporting internal implementation details",
+        "Using comments to indicate 'private' instead of lowercase",
+        "Inconsistent casing within same category of identifiers"
+      ],
+      "refactoringGuidance": "Review all exported identifiers. Make internal implementation details unexported by changing first character to lowercase.",
+      "goodExample": "// Exported function\nfunc ParseRequest(r *Request) error {\n\treturn parseBody(r.Body)\n}\n\n// Unexported helper\nfunc parseBody(body io.Reader) error {\n\t// ...\n}",
+      "badExample": "// Internal helper accidentally exported\nfunc ParseBody(body io.Reader) error {\n\t// This should be unexported\n}"
+    },
+    {
+      "name": "Interface Naming",
+      "category": "Naming",
+      "definition": "By convention, one-method interfaces are named by the method name plus an -er suffix or similar modification to construct an agent noun: Reader, Writer, Formatter, CloseNotifier etc.",
+      "keyCharacteristics": [
+        "One-method interfaces: method name + 'er'",
+        "Describes behavior, not implementation",
+        "Short and memorable",
+        "Common suffixes: -er, -or, -ar"
+      ],
+      "whenToApply": "When defining interfaces, especially single-method interfaces.",
+      "codeSmells": [
+        "Interface suffix on multi-method interfaces: 'UserRepositoryInterface'",
+        "Redundant 'I' prefix: 'IReader'",
+        "Non-behavioral names for interfaces",
+        "Names that describe implementation rather than capability"
+      ],
+      "refactoringGuidance": "Rename interfaces to describe behavior. For single-method interfaces, use method name + 'er'. For multi-method interfaces, use descriptive names without 'Interface' suffix.",
+      "goodExample": "type Reader interface {\n\tRead(p []byte) (n int, err error)\n}\n\ntype Closer interface {\n\tClose() error\n}\n\ntype UserService interface {\n\tGetUser(id string) (*User, error)\n\tCreateUser(user *User) error\n}",
+      "badExample": "type IReader interface {\n\tRead(p []byte) (n int, err error)\n}\n\ntype UserServiceInterface interface {\n\tGetUser(id string) (*User, error)\n}"
+    },
+    {
+      "name": "MixedCaps",
+      "category": "Naming",
+      "definition": "Use MixedCaps or mixedCaps rather than underscores for multi-word names in Go. This applies to constants, variables, functions, and types.",
+      "keyCharacteristics": [
+        "No underscores in identifiers",
+        "Uppercase for exported: MixedCaps",
+        "Lowercase for unexported: mixedCaps",
+        "Acronyms are all caps: HTTP, ID, URL"
+      ],
+      "whenToApply": "For all multi-word identifiers in Go.",
+      "codeSmells": [
+        "Snake case: 'user_name', 'http_client'",
+        "Inconsistent acronym casing: 'HttpClient' (should be 'HTTPClient')",
+        "Mixed styles: 'get_userID'"
+      ],
+      "refactoringGuidance": "Replace underscores with camelCase. Ensure consistent casing for acronyms (all uppercase).",
+      "goodExample": "var userName string\nvar HTTPClient *http.Client\nconst MaxConnections = 100\n\nfunc GetUserID() string { }",
+      "badExample": "var user_name string\nvar Http_Client *http.Client\nconst MAX_CONNECTIONS = 100\n\nfunc Get_User_Id() string { }"
+    },
+    {
+      "name": "Semicolons",
+      "category": "Formatting",
+      "definition": "Go's formal grammar uses semicolons to terminate statements, but the lexer automatically inserts them using a simple rule: if the last token before a newline is an identifier, a basic literal, or certain tokens like 'break' or '++', the lexer inserts a semicolon.",
+      "keyCharacteristics": [
+        "No manual semicolons needed in idiomatic Go",
+        "Opening brace cannot be on its own line",
+        "Automatic insertion based on last token",
+        "Semicolons required in for loop clauses"
+      ],
+      "whenToApply": "Understanding this rule helps avoid syntax errors with brace placement.",
+      "codeSmells": [
+        "Opening braces on separate lines",
+        "Manual semicolons at end of lines",
+        "Unexpected syntax errors from newline placement"
+      ],
+      "refactoringGuidance": "Move opening braces to same line as declaration. Remove manual semicolons except in for loops.",
+      "goodExample": "func main() {\n\tif x > 0 {\n\t\tfmt.Println(\"positive\")\n\t}\n\n\tfor i := 0; i < 10; i++ {\n\t\t// semicolons required in for\n\t}\n}",
+      "badExample": "func main()\n{\n\tif x > 0\n\t{\n\t\tfmt.Println(\"positive\");\n\t};\n}"
+    },
+    {
+      "name": "Guard Clauses",
+      "category": "Control Structures",
+      "definition": "Prefer early returns and guard clauses over nested if-else blocks. Handle error cases and edge conditions first, then proceed with the main logic. This reduces nesting and improves readability.",
+      "keyCharacteristics": [
+        "Early returns for error conditions",
+        "Reduced nesting depth",
+        "Main logic at lowest indentation level",
+        "Clear separation of error handling from happy path"
+      ],
+      "whenToApply": "In functions with multiple conditional checks, especially error handling.",
+      "codeSmells": [
+        "Deep nesting of if-else blocks",
+        "Happy path buried in nested conditions",
+        "Error handling mixed with business logic",
+        "Else blocks that could be avoided with early return"
+      ],
+      "refactoringGuidance": "Invert conditions and return early for error cases. Eliminate else blocks by returning from the if block.",
+      "goodExample": "func process(data []byte) error {\n\tif len(data) == 0 {\n\t\treturn errors.New(\"empty data\")\n\t}\n\tif !isValid(data) {\n\t\treturn errors.New(\"invalid data\")\n\t}\n\t// Main logic here at lowest indentation\n\treturn nil\n}",
+      "badExample": "func process(data []byte) error {\n\tif len(data) > 0 {\n\t\tif isValid(data) {\n\t\t\t// Main logic buried in nesting\n\t\t\treturn nil\n\t\t} else {\n\t\t\treturn errors.New(\"invalid data\")\n\t\t}\n\t} else {\n\t\treturn errors.New(\"empty data\")\n\t}\n}"
+    },
+    {
+      "name": "For Loop Patterns",
+      "category": "Control Structures",
+      "definition": "Go has only one looping construct, the for loop, but it can be used in several forms: traditional three-component loop, while-style condition-only loop, infinite loop, and range loop for iterating over slices, arrays, maps, strings, and channels.",
+      "keyCharacteristics": [
+        "Single keyword 'for' for all loops",
+        "Three forms: for init; condition; post {}, for condition {}, for {}",
+        "Range form for collections: for i, v := range collection {}",
+        "Can break and continue",
+        "No while or do-while keywords"
+      ],
+      "whenToApply": "For any iteration need in Go.",
+      "codeSmells": [
+        "Using traditional for when range would be clearer",
+        "Ignoring index/value when not needed (should use _ )",
+        "Modifying slice while ranging over it (can cause issues)",
+        "Not understanding range variable reuse"
+      ],
+      "refactoringGuidance": "Use range for iterating over collections. Use blank identifier _ for unused index/value. Be careful with pointers to range variables.",
+      "goodExample": "// Range over slice\nfor i, v := range items {\n\tfmt.Println(i, v)\n}\n\n// Only need value\nfor _, v := range items {\n\tprocess(v)\n}\n\n// Only need index\nfor i := range items {\n\tfmt.Println(i)\n}\n\n// Infinite loop\nfor {\n\tif done {\n\t\tbreak\n\t}\n}",
+      "badExample": "// Using traditional for instead of range\nfor i := 0; i < len(items); i++ {\n\tv := items[i]\n\tprocess(v)\n}\n\n// Not using blank identifier\nfor i, v := range items {\n\tprocess(v) // i unused\n}"
+    },
+    {
+      "name": "Switch Statements",
+      "category": "Control Structures",
+      "definition": "Go's switch is more flexible than in C-family languages. Cases don't fall through by default (no break needed), can have multiple values per case, and can switch on any comparable type or even be expression-less for long if-else chains.",
+      "keyCharacteristics": [
+        "No automatic fallthrough (use 'fallthrough' keyword if needed)",
+        "Can switch on any type, not just integers",
+        "Multiple values per case: case 1, 2, 3:",
+        "Expression-less switch for if-else chains",
+        "Can have initialization statement"
+      ],
+      "whenToApply": "Use switch for multi-way conditionals instead of long if-else chains. Use type switches for interface type checking.",
+      "codeSmells": [
+        "Long if-else-if chains that could be switch",
+        "Unnecessary break statements",
+        "Not using multiple values in single case",
+        "Verbose type checking instead of type switch"
+      ],
+      "refactoringGuidance": "Replace if-else chains with switch statements. Combine multiple case values. Use expression-less switch for complex conditions.",
+      "goodExample": "// Traditional switch\nswitch os := runtime.GOOS; os {\ncase \"darwin\", \"linux\":\n\tfmt.Println(\"Unix-like\")\ncase \"windows\":\n\tfmt.Println(\"Windows\")\ndefault:\n\tfmt.Println(\"Other\")\n}\n\n// Expression-less switch\nswitch {\ncase x < 0:\n\treturn \"negative\"\ncase x == 0:\n\treturn \"zero\"\ndefault:\n\treturn \"positive\"\n}",
+      "badExample": "// Should use switch\nif os == \"darwin\" || os == \"linux\" {\n\tfmt.Println(\"Unix-like\")\n} else if os == \"windows\" {\n\tfmt.Println(\"Windows\")\n} else {\n\tfmt.Println(\"Other\")\n}"
+    },
+    {
+      "name": "Type Switch",
+      "category": "Control Structures",
+      "definition": "A type switch is a construct that permits several type assertions in series. It's like a regular switch but the cases specify types instead of values.",
+      "keyCharacteristics": [
+        "Uses syntax: switch v := x.(type)",
+        "Cases specify types, not values",
+        "Variable v has the concrete type in each case",
+        "Useful for handling interface values",
+        "Can use _ if variable not needed"
+      ],
+      "whenToApply": "When you need to handle an interface value differently based on its concrete type.",
+      "codeSmells": [
+        "Multiple type assertions with if statements",
+        "Repeated type assertion of same variable",
+        "Not using the type-asserted variable in case block"
+      ],
+      "refactoringGuidance": "Replace multiple type assertions with type switch. Use the typed variable directly in each case.",
+      "goodExample": "func process(x interface{}) {\n\tswitch v := x.(type) {\n\tcase int:\n\t\tfmt.Printf(\"int: %d\\n\", v)\n\tcase string:\n\t\tfmt.Printf(\"string: %s\\n\", v)\n\tcase bool:\n\t\tfmt.Printf(\"bool: %t\\n\", v)\n\tdefault:\n\t\tfmt.Printf(\"unknown type: %T\\n\", v)\n\t}\n}",
+      "badExample": "func process(x interface{}) {\n\tif v, ok := x.(int); ok {\n\t\tfmt.Printf(\"int: %d\\n\", v)\n\t} else if v, ok := x.(string); ok {\n\t\tfmt.Printf(\"string: %s\\n\", v)\n\t} else if v, ok := x.(bool); ok {\n\t\tfmt.Printf(\"bool: %t\\n\", v)\n\t}\n}"
+    },
+    {
+      "name": "Defer",
+      "category": "Control Structures",
+      "definition": "A defer statement pushes a function call onto a stack. The deferred calls are executed in LIFO order after the surrounding function returns, commonly used for cleanup operations like closing files or unlocking mutexes.",
+      "keyCharacteristics": [
+        "Executes when surrounding function returns",
+        "LIFO order (last deferred, first executed)",
+        "Arguments evaluated immediately, but call delayed",
+        "Executes even if function panics",
+        "Perfect for cleanup and resource management"
+      ],
+      "whenToApply": "Use defer for cleanup operations that must happen regardless of how the function exits (normal return, panic, etc.).",
+      "codeSmells": [
+        "Manual cleanup before each return",
+        "Forgetting to close resources",
+        "Cleanup code duplicated across multiple returns",
+        "Defer in loops (can cause memory buildup)"
+      ],
+      "refactoringGuidance": "Add defer immediately after resource acquisition. Remove manual cleanup before returns. For loops, consider extracting function to use defer.",
+      "goodExample": "func readFile(filename string) ([]byte, error) {\n\tf, err := os.Open(filename)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tdefer f.Close() // Cleanup guaranteed\n\n\treturn io.ReadAll(f)\n}\n\nfunc withLock(mu *sync.Mutex, fn func()) {\n\tmu.Lock()\n\tdefer mu.Unlock()\n\tfn()\n}",
+      "badExample": "func readFile(filename string) ([]byte, error) {\n\tf, err := os.Open(filename)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\t\n\tdata, err := io.ReadAll(f)\n\tf.Close() // Easy to forget in some paths\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\treturn data, nil\n}"
+    },
+    {
+      "name": "Multiple Return Values",
+      "category": "Functions",
+      "definition": "Go functions can return multiple values, commonly used to return a result and an error. This pattern eliminates the need for in-band error returns (like -1 for error) and makes error handling explicit.",
+      "keyCharacteristics": [
+        "Return any number of values",
+        "Common pattern: (result, error)",
+        "Makes error handling explicit and type-safe",
+        "Can return multiple results of different types",
+        "Use blank identifier _ to ignore unwanted values"
+      ],
+      "whenToApply": "Use for functions that can fail (return result and error) or need to return multiple related values.",
+      "codeSmells": [
+        "Using sentinel values to indicate errors",
+        "Returning only error without result",
+        "Ignoring errors with blank identifier when they should be handled",
+        "Too many return values (>3 suggests need for struct)"
+      ],
+      "refactoringGuidance": "Return (result, error) for functions that can fail. Handle or explicitly ignore errors. Consider struct for >3 return values.",
+      "goodExample": "func divide(a, b float64) (float64, error) {\n\tif b == 0 {\n\t\treturn 0, errors.New(\"division by zero\")\n\t}\n\treturn a / b, nil\n}\n\nresult, err := divide(10, 2)\nif err != nil {\n\treturn err\n}\nfmt.Println(result)",
+      "badExample": "// Using sentinel value\nfunc divide(a, b float64) float64 {\n\tif b == 0 {\n\t\treturn -1 // Ambiguous error indication\n\t}\n\treturn a / b\n}\n\nresult := divide(10, 2)\nif result == -1 {\n\t// Can't distinguish error from valid -1\n}"
+    },
+    {
+      "name": "Named Return Values",
+      "category": "Functions",
+      "definition": "Return values can be named and used as regular variables. A return statement without arguments returns the named return values. This can improve documentation and enable 'naked' returns, but should be used judiciously.",
+      "keyCharacteristics": [
+        "Named in function signature",
+        "Act as variables initialized to zero values",
+        "Naked return returns current values",
+        "Self-documenting function signatures",
+        "Useful with defer for modifying return values"
+      ],
+      "whenToApply": "Use for short, clear functions where it improves documentation. Particularly useful when defer needs to modify return values.",
+      "codeSmells": [
+        "Naked returns in long functions (hard to track values)",
+        "Named returns without naked return (unnecessary)",
+        "Non-descriptive names like 'r' or 'result'",
+        "Overuse leading to unclear control flow"
+      ],
+      "refactoringGuidance": "Use named returns sparingly, mainly for documentation or defer interaction. Avoid naked returns in functions >5-10 lines.",
+      "goodExample": "func split(sum int) (x, y int) {\n\tx = sum * 4 / 9\n\ty = sum - x\n\treturn // naked return\n}\n\n// Useful with defer\nfunc increment(n int) (result int) {\n\tdefer func() {\n\t\tresult++\n\t}()\n\treturn n\n}",
+      "badExample": "func longFunction() (result string, err error) {\n\t// ... 50 lines of code ...\n\tif someCondition {\n\t\tresult = \"value1\"\n\t}\n\t// ... more code ...\n\tif otherCondition {\n\t\tresult = \"value2\"\n\t}\n\t// ... more code ...\n\treturn // Hard to track what's being returned\n}"
+    },
+    {
+      "name": "new vs make",
+      "category": "Allocation",
+      "definition": "Go has two allocation primitives: new and make. new(T) allocates zeroed storage for a new item of type T and returns its address (*T). make(T, args) creates only slices, maps, and channels, returning an initialized (not zeroed) value of type T (not *T).",
+      "keyCharacteristics": [
+        "new(T) returns *T (pointer to zero value)",
+        "new works for any type",
+        "make(T) returns T (initialized value)",
+        "make only for slices, maps, channels",
+        "make creates ready-to-use data structures"
+      ],
+      "whenToApply": "Use new for getting pointer to zero value of any type. Use make for slices, maps, and channels that need initialization.",
+      "codeSmells": [
+        "Using new for slices, maps, or channels",
+        "Using make for non-reference types",
+        "Not understanding difference leads to nil pointer errors",
+        "Unnecessary use of new when composite literal works better"
+      ],
+      "refactoringGuidance": "Use make for slices, maps, channels. Use composite literals instead of new for structs. Use new only when you specifically need a pointer to zero value.",
+      "goodExample": "// make for slices, maps, channels\ns := make([]int, 10, 20) // length 10, capacity 20\nm := make(map[string]int)\nc := make(chan int, 5)\n\n// new for other types (or use composite literal)\np := new(int) // p is *int pointing to 0\n\n// Composite literal (usually better than new)\nu := &User{Name: \"Alice\"} // better than: u := new(User); u.Name = \"Alice\"",
+      "badExample": "// Don't use new for slice/map/channel\nvar s *[]int = new([]int) // s is pointer to nil slice, not usable!\nvar m *map[string]int = new(map[string]int) // m points to nil map\n\n// These cause panics:\n// *s = append(*s, 1) // panic: nil slice\n// (*m)[\"key\"] = 1 // panic: nil map"
+    },
+    {
+      "name": "Slices",
+      "category": "Data",
+      "definition": "Slices wrap arrays to give a more general, powerful, and convenient interface to sequences of data. Except for items with explicit dimension like transformation matrices, most array programming in Go is done with slices rather than simple arrays.",
+      "keyCharacteristics": [
+        "Hold references to underlying array",
+        "Have length and capacity",
+        "Can grow with append()",
+        "Passing slices is efficient (no copying)",
+        "Zero value is nil (ready to use with append)"
+      ],
+      "whenToApply": "Use slices for almost all sequence/list needs in Go. Use arrays only when size is fixed and known.",
+      "codeSmells": [
+        "Using arrays when slices would be more appropriate",
+        "Not checking capacity before appending in loops",
+        "Confusing length and capacity",
+        "Not understanding slice sharing underlying array"
+      ],
+      "refactoringGuidance": "Replace arrays with slices for dynamic data. Use make() with capacity hint for better performance. Be aware of slice aliasing.",
+      "goodExample": "// Creating slices\nvar s []int // nil slice, can append\ns = make([]int, 0, 10) // length 0, capacity 10\ns = []int{1, 2, 3} // composite literal\n\n// Appending\ns = append(s, 4, 5, 6)\n\n// Slicing\nsub := s[1:3] // sub-slice shares storage\n\n// Efficient with capacity hint\nfunc process(items []string) []string {\n\tresult := make([]string, 0, len(items))\n\tfor _, item := range items {\n\t\tresult = append(result, transform(item))\n\t}\n\treturn result\n}",
+      "badExample": "// Using array unnecessarily\nfunc sum(numbers [100]int) int { // Fixed size, must pass exactly 100\n\ttotal := 0\n\tfor _, n := range numbers {\n\t\ttotal += n\n\t}\n\treturn total\n}\n\n// Better with slice:\n// func sum(numbers []int) int"
+    },
+    {
+      "name": "Two-dimensional Slices",
+      "category": "Data",
+      "definition": "Go can have arrays and slices of arrays and slices. For 2D slices, you must allocate each inner slice independently. This allows for flexible row lengths (jagged arrays) and requires proper initialization.",
+      "keyCharacteristics": [
+        "Type is [][]T (slice of slices)",
+        "Each inner slice must be allocated separately",
+        "Can have variable-length rows",
+        "More flexible than 2D arrays",
+        "Need to allocate outer slice then each inner slice"
+      ],
+      "whenToApply": "When you need matrix-like data structures with potentially variable row lengths, or 2D grids.",
+      "codeSmells": [
+        "Forgetting to allocate inner slices",
+        "Assuming rectangular structure without enforcing it",
+        "Not initializing properly leading to nil inner slices"
+      ],
+      "refactoringGuidance": "Allocate outer slice, then loop to allocate each inner slice. Consider helper function for common 2D slice patterns.",
+      "goodExample": "// Allocate 2D slice with rows of different lengths\nrows := [][]int{\n\t{1, 2, 3},\n\t{4, 5},\n\t{6, 7, 8, 9},\n}\n\n// Or allocate programmatically\nmatrix := make([][]int, 3) // 3 rows\nfor i := range matrix {\n\tmatrix[i] = make([]int, 4) // each row has 4 columns\n}",
+      "badExample": "// Incomplete allocation\nmatrix := make([][]int, 3)\nmatrix[0][0] = 1 // panic: nil slice\n\n// Need to allocate inner slices:\n// for i := range matrix {\n//     matrix[i] = make([]int, 4)\n// }"
+    },
+    {
+      "name": "Maps",
+      "category": "Data",
+      "definition": "Maps are a reference type that map keys to values. Like slices, maps hold references to an underlying data structure. The key type must be comparable (supports ==). Maps must be initialized with make before use.",
+      "keyCharacteristics": [
+        "Key-value data structure",
+        "Keys must be comparable types",
+        "Must use make() to create",
+        "Zero value is nil (cannot add to nil map)",
+        "Comma-ok idiom for checking existence",
+        "Iteration order is random"
+      ],
+      "whenToApply": "Use maps for associative arrays, lookups, and key-value storage.",
+      "codeSmells": [
+        "Not initializing map (using nil map)",
+        "Not checking existence before access",
+        "Using non-comparable types as keys",
+        "Assuming iteration order"
+      ],
+      "refactoringGuidance": "Always initialize maps with make(). Use comma-ok idiom to check key existence. Don't rely on iteration order.",
+      "goodExample": "// Initialize map\nm := make(map[string]int)\nm[\"key\"] = 42\n\n// Composite literal\nm2 := map[string]int{\n\t\"foo\": 1,\n\t\"bar\": 2,\n}\n\n// Check existence\nif val, ok := m[\"key\"]; ok {\n\tfmt.Println(\"Found:\", val)\n} else {\n\tfmt.Println(\"Not found\")\n}\n\n// Delete\ndelete(m, \"key\")",
+      "badExample": "// Nil map\nvar m map[string]int\nm[\"key\"] = 42 // panic: assignment to nil map\n\n// Not checking existence\nval := m[\"missing\"] // returns zero value, not error\nif val == 0 {\n\t// Can't distinguish missing key from zero value\n}"
+    },
+    {
+      "name": "Printing",
+      "category": "Data",
+      "definition": "Go's formatted printing functions (fmt package) use a conversion syntax similar to C's printf but simpler. %v is the default format, %+v includes field names for structs, %#v prints Go syntax representation, and %T prints the type.",
+      "keyCharacteristics": [
+        "%v for default format",
+        "%+v for struct field names",
+        "%#v for Go-syntax representation",
+        "%T for type",
+        "String() method for custom formatting",
+        "Error() method for error types"
+      ],
+      "whenToApply": "Use appropriate format verbs for debugging and output. Implement String() for custom types to control formatting.",
+      "codeSmells": [
+        "Not implementing String() for custom types",
+        "Using wrong format verbs",
+        "Overly complex string concatenation instead of formatting"
+      ],
+      "refactoringGuidance": "Implement String() method for custom types. Use %+v or %#v for debugging. Use appropriate format verbs.",
+      "goodExample": "type Person struct {\n\tName string\n\tAge  int\n}\n\nfunc (p Person) String() string {\n\treturn fmt.Sprintf(\"%s (%d years)\", p.Name, p.Age)\n}\n\np := Person{\"Alice\", 30}\nfmt.Printf(\"%v\\n\", p)  // Alice (30 years)\nfmt.Printf(\"%+v\\n\", p) // {Name:Alice Age:30}\nfmt.Printf(\"%#v\\n\", p) // main.Person{Name:\"Alice\", Age:30}\nfmt.Printf(\"%T\\n\", p)  // main.Person",
+      "badExample": "type Person struct {\n\tName string\n\tAge  int\n}\n\np := Person{\"Alice\", 30}\nfmt.Printf(\"%v\\n\", p) // {Alice 30} - not very readable\n\n// Manual string building instead of String() method\ns := \"Name: \" + p.Name + \", Age: \" + strconv.Itoa(p.Age)"
+    },
+    {
+      "name": "Append",
+      "category": "Data",
+      "definition": "The append built-in function appends elements to the end of a slice. If the slice has sufficient capacity, it is resliced; if not, a new underlying array is allocated. append returns the updated slice, so it's necessary to store the result.",
+      "keyCharacteristics": [
+        "Grows slices dynamically",
+        "Returns new slice value",
+        "May or may not allocate new array",
+        "Can append multiple elements or another slice",
+        "Must assign result back to variable"
+      ],
+      "whenToApply": "Use append to grow slices dynamically. Prefer pre-allocating with capacity hint for better performance when size is known.",
+      "codeSmells": [
+        "Not assigning append result back to variable",
+        "Repeatedly appending in loop without capacity hint",
+        "Appending to slice that might be shared/aliased"
+      ],
+      "refactoringGuidance": "Always assign append result. Use make() with capacity for known sizes. Be careful with slice aliasing.",
+      "goodExample": "// Basic append\ns := []int{1, 2, 3}\ns = append(s, 4, 5) // s is now [1 2 3 4 5]\n\n// Append slice to slice\ns1 := []int{1, 2}\ns2 := []int{3, 4}\ns1 = append(s1, s2...) // [1 2 3 4]\n\n// Efficient with capacity\nfunc filter(items []int) []int {\n\tresult := make([]int, 0, len(items)) // capacity hint\n\tfor _, item := range items {\n\t\tif item > 0 {\n\t\t\tresult = append(result, item)\n\t\t}\n\t}\n\treturn result\n}",
+      "badExample": "// Not assigning result\ns := []int{1, 2, 3}\nappend(s, 4) // Bug: result not assigned, s unchanged\n\n// Inefficient without capacity hint\nfunc collect(n int) []int {\n\tvar result []int // no capacity\n\tfor i := 0; i < n; i++ {\n\t\tresult = append(result, i) // May reallocate many times\n\t}\n\treturn result\n}"
+    },
+    {
+      "name": "Initialization",
+      "category": "Initialization",
+      "definition": "Go provides several ways to initialize values: constants for compile-time values, init functions for complex initialization, and constructors (functions that return new instances). The init function runs automatically before main.",
+      "keyCharacteristics": [
+        "Constants evaluated at compile time",
+        "init() runs automatically, once per package",
+        "Constructor pattern: New() or NewType() functions",
+        "Zero values are usable for many types",
+        "Composite literals for inline initialization"
+      ],
+      "whenToApply": "Use const for compile-time constants, init for package-level setup, and constructors for complex initialization.",
+      "codeSmells": [
+        "Complex initialization in init (hard to test)",
+        "Side effects in init functions",
+        "Not providing constructors for types that need validation",
+        "Multiple init functions doing unclear things"
+      ],
+      "refactoringGuidance": "Keep init simple and side-effect free when possible. Provide New() constructors for types needing validation or setup.",
+      "goodExample": "const (\n\tMaxUsers = 100\n\tVersion  = \"1.0.0\"\n)\n\ntype Server struct {\n\taddr string\n\tport int\n}\n\n// Constructor\nfunc NewServer(addr string, port int) (*Server, error) {\n\tif port < 0 || port > 65535 {\n\t\treturn nil, errors.New(\"invalid port\")\n\t}\n\treturn &Server{addr: addr, port: port}, nil\n}\n\nvar defaultServer *Server\n\nfunc init() {\n\tdefaultServer, _ = NewServer(\"localhost\", 8080)\n}",
+      "badExample": "var cache = map[string]string{}\n\nfunc init() {\n\t// Side effects and complex logic in init\n\tdata, _ := os.ReadFile(\"config.json\")\n\tjson.Unmarshal(data, &cache)\n\tfor k, v := range cache {\n\t\tcache[k] = strings.ToLower(v)\n\t}\n}"
+    },
+    {
+      "name": "Composite Literals",
+      "category": "Initialization",
+      "definition": "Composite literals construct values for structs, arrays, slices, and maps and create a new value each time they are evaluated. They consist of the type followed by a brace-bound list of elements.",
+      "keyCharacteristics": [
+        "Create and initialize in one expression",
+        "Can specify field names (for structs) or just values",
+        "Work for structs, arrays, slices, maps",
+        "Taking address of composite literal is common pattern",
+        "Field names make code more maintainable"
+      ],
+      "whenToApply": "Use composite literals for concise initialization of structs, slices, maps, and arrays.",
+      "codeSmells": [
+        "Not using field names for struct literals (fragile)",
+        "Verbose multi-line initialization that could be composite literal",
+        "Using new() when composite literal is clearer"
+      ],
+      "refactoringGuidance": "Use composite literals for initialization. Use field names for struct literals. Take address directly with &T{...}.",
+      "goodExample": "// Struct with field names (recommended)\np := &Person{\n\tName: \"Alice\",\n\tAge:  30,\n}\n\n// Slice literal\nnumbers := []int{1, 2, 3, 4, 5}\n\n// Map literal\nscores := map[string]int{\n\t\"Alice\": 95,\n\t\"Bob\":   87,\n}\n\n// Array literal\nvar matrix = [3][3]int{\n\t{1, 0, 0},\n\t{0, 1, 0},\n\t{0, 0, 1},\n}",
+      "badExample": "// Verbose initialization\np := new(Person)\np.Name = \"Alice\"\np.Age = 30\n\n// Positional fields (fragile, breaks if struct changes)\np2 := Person{\"Bob\", 25} // What if fields reordered?\n\n// Should use composite literal\nvar numbers []int\nnumbers = append(numbers, 1)\nnumbers = append(numbers, 2)\nnumbers = append(numbers, 3)"
+    },
+    {
+      "name": "Pointer vs Value Receivers",
+      "category": "Methods",
+      "definition": "Methods can be defined on pointer receivers (*T) or value receivers (T). Use pointer receivers when the method needs to modify the receiver, when the receiver is a large struct, or for consistency when any method needs a pointer receiver.",
+      "keyCharacteristics": [
+        "Pointer receivers can modify the receiver",
+        "Value receivers work on a copy",
+        "Pointer receivers avoid copying large structs",
+        "Mixing pointer and value receivers on same type is confusing",
+        "Go automatically handles & and * for method calls"
+      ],
+      "whenToApply": "See decision tree. Generally, use pointer receivers unless you have a good reason for value receivers.",
+      "codeSmells": [
+        "Mixing pointer and value receivers on same type",
+        "Value receiver on method that appears to modify state",
+        "Value receiver on large struct (expensive copy)",
+        "Pointer receiver on small, simple types unnecessarily"
+      ],
+      "refactoringGuidance": "Make all receivers pointer or all value for consistency. Use pointer receivers for large structs or when modification needed.",
+      "goodExample": "type Counter struct {\n\tcount int\n}\n\n// Pointer receiver - modifies state\nfunc (c *Counter) Increment() {\n\tc.count++\n}\n\n// Pointer receiver - consistency\nfunc (c *Counter) Value() int {\n\treturn c.count\n}\n\n// Usage - Go handles pointer automatically\nvar c Counter\nc.Increment() // Go: (&c).Increment()",
+      "badExample": "type Counter struct {\n\tcount int\n}\n\n// Value receiver - doesn't actually modify!\nfunc (c Counter) Increment() {\n\tc.count++ // Modifies copy, not original\n}\n\n// Mixed receivers - confusing\nfunc (c *Counter) Value() int {\n\treturn c.count\n}"
+    },
+    {
+      "name": "Interfaces",
+      "category": "Interfaces",
+      "definition": "Interfaces in Go provide a way to specify behavior. A type implements an interface by implementing its methods - there is no explicit declaration. This enables powerful, flexible, and loosely coupled designs.",
+      "keyCharacteristics": [
+        "Implicit implementation (no 'implements' keyword)",
+        "Set of method signatures",
+        "Enables polymorphism",
+        "Empty interface interface{} (or any) accepts any value",
+        "Small interfaces are better (often 1-3 methods)"
+      ],
+      "whenToApply": "Define interfaces in consumer package, not provider. Use interfaces for abstractions, testing, and polymorphism.",
+      "codeSmells": [
+        "Large interfaces with many methods",
+        "Interfaces in provider package instead of consumer",
+        "Using interface{} when specific type would work",
+        "Premature abstraction with interfaces"
+      ],
+      "refactoringGuidance": "Keep interfaces small. Define interfaces where they're used, not where implementations live. Accept interfaces, return structs.",
+      "goodExample": "// Small, focused interface\ntype Reader interface {\n\tRead(p []byte) (n int, err error)\n}\n\n// Consumer defines interface\npackage processor\n\ntype DataSource interface {\n\tGetData() ([]byte, error)\n}\n\nfunc Process(source DataSource) error {\n\tdata, err := source.GetData()\n\t// ... process ...\n\treturn nil\n}",
+      "badExample": "// Too large, should be split\ntype Repository interface {\n\tGetUser(id string) (*User, error)\n\tCreateUser(u *User) error\n\tUpdateUser(u *User) error\n\tDeleteUser(id string) error\n\tGetOrder(id string) (*Order, error)\n\tCreateOrder(o *Order) error\n\t// ... 20 more methods\n}\n\n// Provider defines interface (less flexible)\npackage database\n\ntype Database interface { // Users forced to use this\n\tQuery(sql string) (*Result, error)\n}"
+    },
+    {
+      "name": "Interface Conversions and Type Assertions",
+      "category": "Interfaces",
+      "definition": "Type assertions provide access to an interface value's underlying concrete value. Type switches allow you to compare an interface value against multiple types. Comma-ok idiom safely checks type assertions.",
+      "keyCharacteristics": [
+        "Syntax: value, ok := x.(T)",
+        "Without ok, panics if wrong type",
+        "Type switch for multiple types",
+        "Can check if interface implements another interface",
+        "Use comma-ok idiom for safety"
+      ],
+      "whenToApply": "When you need to access the concrete type from an interface value or check what type is stored in an interface.",
+      "codeSmells": [
+        "Type assertion without comma-ok check",
+        "Repeated type assertions instead of type switch",
+        "Not handling type assertion failure"
+      ],
+      "refactoringGuidance": "Always use comma-ok idiom for type assertions. Use type switch for checking multiple types.",
+      "goodExample": "// Safe type assertion\nif s, ok := v.(string); ok {\n\tfmt.Println(\"string:\", s)\n}\n\n// Type switch\nswitch v := x.(type) {\ncase int:\n\tfmt.Printf(\"int: %d\\n\", v)\ncase string:\n\tfmt.Printf(\"string: %s\\n\", v)\ndefault:\n\tfmt.Printf(\"unknown: %T\\n\", v)\n}\n\n// Check interface implementation\nif closer, ok := obj.(io.Closer); ok {\n\tcloser.Close()\n}",
+      "badExample": "// Unsafe - panics if wrong type\ns := v.(string)\n\n// Verbose type checking\nif _, ok := x.(int); ok {\n\tprocess(x.(int)) // redundant assertion\n} else if _, ok := x.(string); ok {\n\tprocess(x.(string))\n} // Use type switch instead"
+    },
+    {
+      "name": "Embedding",
+      "category": "Interfaces",
+      "definition": "Go does not provide typical class-based inheritance, but it supports composition through embedding. When a type is embedded, its methods become methods of the outer type, but when called, the receiver is the inner type, not the outer one.",
+      "keyCharacteristics": [
+        "Embed types without field name",
+        "Embedded type's methods promoted to outer type",
+        "Embedded fields accessed directly",
+        "Can override promoted methods",
+        "Both struct and interface embedding"
+      ],
+      "whenToApply": "Use embedding for composition, to add behavior to types, or to create interface combinations.",
+      "codeSmells": [
+        "Deep embedding hierarchies",
+        "Embedding when field would be clearer",
+        "Confusion about receiver of promoted methods",
+        "Overusing embedding instead of explicit fields"
+      ],
+      "refactoringGuidance": "Use embedding for 'is-a-kind-of' relationships. Use explicit fields for 'has-a' relationships. Keep embedding shallow.",
+      "goodExample": "// Struct embedding\ntype Engine struct {\n\tHorsepower int\n}\n\nfunc (e *Engine) Start() {\n\tfmt.Println(\"Engine starting\")\n}\n\ntype Car struct {\n\tEngine // Embedded\n\tModel string\n}\n\nc := Car{\n\tEngine: Engine{Horsepower: 200},\n\tModel:  \"Sedan\",\n}\nc.Start() // Promoted method\nfmt.Println(c.Horsepower) // Direct access\n\n// Interface embedding\ntype ReadWriter interface {\n\tReader\n\tWriter\n}",
+      "badExample": "type Car struct {\n\tEngine *Engine // Not embedded - need c.Engine.Start()\n\tModel  string\n}\n\n// Deep hierarchy\ntype A struct { }\ntype B struct { A }\ntype C struct { B }\ntype D struct { C } // Too deep"
+    },
+    {
+      "name": "Share by Communicating",
+      "category": "Concurrency",
+      "definition": "Go's concurrency approach encourages 'Do not communicate by sharing memory; instead, share memory by communicating.' Use channels to pass data between goroutines rather than sharing memory with locks.",
+      "keyCharacteristics": [
+        "Channels for communication between goroutines",
+        "Avoids shared memory where possible",
+        "Ownership transfer through channels",
+        "Simpler reasoning about concurrent code",
+        "Still use mutexes when appropriate"
+      ],
+      "whenToApply": "Prefer channels for communication between goroutines. Use mutexes only when channels don't fit or for protecting invariants.",
+      "codeSmells": [
+        "Excessive mutex usage with shared state",
+        "Complex locking patterns",
+        "Goroutines sharing variables without synchronization",
+        "Using channels when simple mutex would be clearer"
+      ],
+      "refactoringGuidance": "Redesign shared memory patterns to use channels. Transfer ownership of data through channels. Use mutexes for protecting simple invariants.",
+      "goodExample": "// Channel-based communication\nfunc worker(jobs <-chan int, results chan<- int) {\n\tfor job := range jobs {\n\t\tresults <- process(job)\n\t}\n}\n\njobs := make(chan int, 10)\nresults := make(chan int, 10)\n\ngo worker(jobs, results)\n\njobs <- 42\nresult := <-results",
+      "badExample": "// Shared memory with mutex\ntype Counter struct {\n\tmu    sync.Mutex\n\tvalue int\n}\n\nfunc (c *Counter) Inc() {\n\tc.mu.Lock()\n\tc.value++\n\tc.mu.Unlock()\n}\n\n// For simple counter, could use channel or atomic instead"
+    },
+    {
+      "name": "Goroutines",
+      "category": "Concurrency",
+      "definition": "Goroutines are lightweight threads managed by the Go runtime. They are cheap to create and have growable stacks. Use the 'go' keyword to launch a function as a goroutine. They enable concurrent execution.",
+      "keyCharacteristics": [
+        "Lightweight (not OS threads)",
+        "Cheap to create (thousands/millions possible)",
+        "Growable stacks (start small, grow as needed)",
+        "Scheduled by Go runtime",
+        "Launch with 'go' keyword"
+      ],
+      "whenToApply": "Use goroutines for concurrent operations, async tasks, parallel processing, and handling multiple clients/requests.",
+      "codeSmells": [
+        "Creating goroutines without way to stop them (leaks)",
+        "Not coordinating goroutine completion",
+        "Closure capturing loop variable incorrectly",
+        "Too many goroutines (unbounded creation)"
+      ],
+      "refactoringGuidance": "Use sync.WaitGroup or channels to coordinate goroutines. Be careful with closures capturing variables. Limit goroutine creation.",
+      "goodExample": "// Basic goroutine\ngo func() {\n\tprocess(data)\n}()\n\n// Coordinated with WaitGroup\nvar wg sync.WaitGroup\nfor i := 0; i < 10; i++ {\n\twg.Add(1)\n\ti := i // Capture variable\n\tgo func() {\n\t\tdefer wg.Done()\n\t\tprocess(i)\n\t}()\n}\nwg.Wait()\n\n// Worker pool pattern\nfor w := 0; w < numWorkers; w++ {\n\tgo worker(jobs, results)\n}",
+      "badExample": "// Loop variable capture bug\nfor i := 0; i < 10; i++ {\n\tgo func() {\n\t\tfmt.Println(i) // All print same value!\n\t}()\n}\n\n// Goroutine leak\ngo func() {\n\tfor {\n\t\t// No way to stop this\n\t\tprocess()\n\t\ttime.Sleep(time.Second)\n\t}\n}() // Runs forever\n\n// Unbounded goroutine creation\nfor _, item := range millionItems {\n\tgo process(item) // Creates million goroutines!\n}"
+    },
+    {
+      "name": "Channels",
+      "category": "Concurrency",
+      "definition": "Channels are typed conduits through which you can send and receive values with the channel operator <-. Channels can be buffered or unbuffered and provide synchronization between goroutines.",
+      "keyCharacteristics": [
+        "Typed communication pipes",
+        "Send with ch <- value",
+        "Receive with value := <-ch or <-ch",
+        "Can be buffered or unbuffered",
+        "Can be directional (<-chan or chan<-)",
+        "Close with close(ch)"
+      ],
+      "whenToApply": "Use channels for communication between goroutines, signaling, and coordination.",
+      "codeSmells": [
+        "Sending on closed channel (panic)",
+        "Not closing channels when producer is done",
+        "Receiving from nil channel (blocks forever)",
+        "Not using directional channels in function signatures",
+        "Channel buffer size too large or too small"
+      ],
+      "refactoringGuidance": "Use directional channels in function parameters. Close channels from sender side. Use buffered channels to prevent blocking when appropriate.",
+      "goodExample": "// Unbuffered channel\nch := make(chan int)\n\ngo func() {\n\tch <- 42 // Blocks until received\n}()\n\nval := <-ch\n\n// Buffered channel\nch2 := make(chan int, 3)\nch2 <- 1 // Doesn't block\nch2 <- 2\nch2 <- 3\n\n// Directional channels\nfunc producer(ch chan<- int) {\n\tfor i := 0; i < 10; i++ {\n\t\tch <- i\n\t}\n\tclose(ch)\n}\n\nfunc consumer(ch <-chan int) {\n\tfor val := range ch {\n\t\tprocess(val)\n\t}\n}",
+      "badExample": "// Not closing channel\nfunc producer(ch chan int) {\n\tfor i := 0; i < 10; i++ {\n\t\tch <- i\n\t}\n\t// Forgot close(ch) - consumer's range will block forever\n}\n\n// Sending on closed channel\nclose(ch)\nch <- 42 // panic!\n\n// Bi-directional when should be directional\nfunc producer(ch chan int) { // Should be chan<- int\n\tch <- 42\n\tval := <-ch // Can receive - probably bug\n}"
+    },
+    {
+      "name": "Channel Ranging and Closing",
+      "category": "Concurrency",
+      "definition": "The range keyword works on channels, receiving values until the channel is closed. Only the sender should close a channel. Closing a channel signals that no more values will be sent. Receiving from a closed channel returns zero value immediately.",
+      "keyCharacteristics": [
+        "range on channel receives until closed",
+        "Only sender should close",
+        "Closing is optional (GC will collect unclosed channels)",
+        "Close signals no more values",
+        "Comma-ok idiom checks if channel is closed",
+        "Can't close receive-only channel"
+      ],
+      "whenToApply": "Close channels when you need to signal completion to receivers. Use range to receive all values from a channel.",
+      "codeSmells": [
+        "Closing channel from receiver side",
+        "Closing already closed channel (panic)",
+        "Not ranging when receiving all values",
+        "Closing channel unnecessarily"
+      ],
+      "refactoringGuidance": "Close channels from sender. Use range for receiving multiple values. Use comma-ok for single receives if closure matters.",
+      "goodExample": "// Producer closes after sending\nch := make(chan int)\n\ngo func() {\n\tfor i := 0; i < 10; i++ {\n\t\tch <- i\n\t}\n\tclose(ch) // Signal completion\n}()\n\n// Consumer ranges until closed\nfor val := range ch {\n\tprocess(val)\n}\n\n// Check if closed\nval, ok := <-ch\nif !ok {\n\tfmt.Println(\"Channel closed\")\n}",
+      "badExample": "// Receiver closing (dangerous)\nch := make(chan int)\n\ngo func() {\n\tfor {\n\t\tch <- rand.Int()\n\t}\n}()\n\nfor val := range ch {\n\tif val == 0 {\n\t\tclose(ch) // Panic if sender still sending!\n\t\tbreak\n\t}\n}"
+    },
+    {
+      "name": "Select",
+      "category": "Concurrency",
+      "definition": "The select statement lets a goroutine wait on multiple channel operations. A select blocks until one of its cases can run, then executes that case. If multiple are ready, it chooses one at random.",
+      "keyCharacteristics": [
+        "Multiplexes channel operations",
+        "Blocks until one case is ready",
+        "Random choice if multiple ready",
+        "default case for non-blocking",
+        "Can have timeout with time.After",
+        "Empty select blocks forever"
+      ],
+      "whenToApply": "Use select when waiting on multiple channels, implementing timeouts, or non-blocking operations.",
+      "codeSmells": [
+        "Could use channels directly instead of complex select",
+        "Missing default case when non-blocking intended",
+        "Not using time.After for timeouts",
+        "Select with only one case (just use that channel)"
+      ],
+      "refactoringGuidance": "Use select for multiple channels. Add default for non-blocking. Use time.After for timeouts.",
+      "goodExample": "// Basic select\nselect {\ncase msg := <-ch1:\n\tfmt.Println(\"Received from ch1:\", msg)\ncase msg := <-ch2:\n\tfmt.Println(\"Received from ch2:\", msg)\ncase ch3 <- 42:\n\tfmt.Println(\"Sent to ch3\")\n}\n\n// With timeout\nselect {\ncase res := <-ch:\n\tprocess(res)\ncase <-time.After(time.Second):\n\tfmt.Println(\"Timeout\")\n}\n\n// Non-blocking\nselect {\ncase msg := <-ch:\n\tprocess(msg)\ndefault:\n\tfmt.Println(\"No message\")\n}",
+      "badExample": "// Should just use channel receive\nselect {\ncase msg := <-ch:\n\tprocess(msg)\n}\n// Better: msg := <-ch; process(msg)\n\n// Wanted non-blocking but forgot default\nselect {\ncase msg := <-ch:\n\tprocess(msg)\n// Blocks if ch not ready!\n}"
+    },
+    {
+      "name": "Error Handling",
+      "category": "Errors",
+      "definition": "Go uses explicit error return values for error handling. Functions that can fail return an error as the last return value. Callers should check errors explicitly. This makes error handling visible and forces you to think about failure cases.",
+      "keyCharacteristics": [
+        "error is a built-in interface",
+        "Return error as last value",
+        "Check errors explicitly",
+        "Propagate or handle, don't ignore",
+        "errors.New() for simple errors",
+        "fmt.Errorf() for formatted errors"
+      ],
+      "whenToApply": "Return error from any function that can fail. Always check returned errors.",
+      "codeSmells": [
+        "Ignoring errors with _ ",
+        "Not checking errors",
+        "Returning error without context",
+        "Using panic for expected errors"
+      ],
+      "refactoringGuidance": "Always check errors. Add context when propagating errors. Use fmt.Errorf with %w for error wrapping.",
+      "goodExample": "// Returning error\nfunc readFile(path string) ([]byte, error) {\n\tdata, err := os.ReadFile(path)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"reading %s: %w\", path, err)\n\t}\n\treturn data, nil\n}\n\n// Checking error\ndata, err := readFile(\"config.json\")\nif err != nil {\n\treturn err\n}\n\n// Multiple error checks\nf, err := os.Open(file)\nif err != nil {\n\treturn err\n}\ndefer f.Close()\n\n_, err = f.Write(data)\nif err != nil {\n\treturn err\n}",
+      "badExample": "// Ignoring error\ndata, _ := os.ReadFile(file)\n\n// Not checking\nf, err := os.Open(file)\nf.Write(data) // f might be nil!\n\n// No context\nfunc readConfig() error {\n\t_, err := os.ReadFile(\"config.json\")\n\treturn err // Loses context of what failed\n}"
+    },
+    {
+      "name": "Panic",
+      "category": "Errors",
+      "definition": "Panic is a built-in function that stops normal execution. When a function panics, it stops executing, runs deferred functions, and returns to its caller. This continues up the stack until all functions in the current goroutine return, then the program crashes.",
+      "keyCharacteristics": [
+        "Stops normal execution",
+        "Runs deferred functions",
+        "Unwinds call stack",
+        "Crashes program if not recovered",
+        "Use only for unrecoverable errors",
+        "Libraries should avoid panic"
+      ],
+      "whenToApply": "Use panic only for truly exceptional situations: programming errors, invariant violations, or unrecoverable states. Not for normal error handling.",
+      "codeSmells": [
+        "Using panic for expected errors",
+        "Library code panicking instead of returning errors",
+        "Panic without good reason",
+        "Using recover unnecessarily"
+      ],
+      "refactoringGuidance": "Replace panic with error returns for expected failures. Reserve panic for programmer mistakes or impossible situations.",
+      "goodExample": "// Appropriate panic - programming error\nfunc MustCompile(pattern string) *Regexp {\n\tre, err := Compile(pattern)\n\tif err != nil {\n\t\tpanic(err) // Compile-time/init error\n\t}\n\treturn re\n}\n\n// Initialization failure\nfunc init() {\n\tdb, err := sql.Open(\"postgres\", connStr)\n\tif err != nil {\n\t\tpanic(\"cannot initialize database\")\n\t}\n}\n\n// Impossible situation\nfunc getValue(key string) string {\n\tval, ok := requiredConfig[key]\n\tif !ok {\n\t\tpanic(\"required config missing: \" + key)\n\t}\n\treturn val\n}",
+      "badExample": "// Bad - use error return\nfunc divide(a, b int) int {\n\tif b == 0 {\n\t\tpanic(\"division by zero\") // Expected error!\n\t}\n\treturn a / b\n}\n// Should return (int, error)\n\n// Bad - library panicking\nfunc ParseUser(data []byte) *User {\n\tvar u User\n\tif err := json.Unmarshal(data, &u); err != nil {\n\t\tpanic(err) // Libraries should return errors\n\t}\n\treturn &u\n}"
+    },
+    {
+      "name": "Recover",
+      "category": "Errors",
+      "definition": "Recover is a built-in function that regains control of a panicking goroutine. Recover is only useful inside deferred functions. During normal execution, recover returns nil. If the current goroutine is panicking, recover captures the value given to panic and resumes normal execution.",
+      "keyCharacteristics": [
+        "Only works inside defer",
+        "Returns panic value or nil",
+        "Resumes normal execution",
+        "Can convert panic to error",
+        "Use sparingly",
+        "Each goroutine needs own recover"
+      ],
+      "whenToApply": "Use recover to prevent complete program crash in servers, or to convert panics to errors at package boundaries. Use very sparingly.",
+      "codeSmells": [
+        "Catching all panics and ignoring them",
+        "Using recover for control flow",
+        "Recovering without logging/reporting",
+        "Overuse of recover (indicates too many panics)"
+      ],
+      "refactoringGuidance": "Use recover only at strategic boundaries. Always log recovered panics. Re-panic if you can't handle it properly.",
+      "goodExample": "// Server protecting against crashes\nfunc handler(w http.ResponseWriter, r *http.Request) {\n\tdefer func() {\n\t\tif err := recover(); err != nil {\n\t\t\tlog.Printf(\"panic: %v\\n%s\", err, debug.Stack())\n\t\t\thttp.Error(w, \"Internal error\", 500)\n\t\t}\n\t}()\n\t\n\thandleRequest(w, r)\n}\n\n// Converting panic to error\nfunc safe(fn func()) (err error) {\n\tdefer func() {\n\t\tif r := recover(); r != nil {\n\t\t\terr = fmt.Errorf(\"panic: %v\", r)\n\t\t}\n\t}()\n\tfn()\n\treturn nil\n}",
+      "badExample": "// Silently catching all panics\ndefer func() {\n\trecover() // Ignores panic!\n}()\n\n// Using for control flow\nfunc validate(data string) {\n\tif data == \"\" {\n\t\tpanic(\"empty\") // Don't use panic for control flow\n\t}\n}\n\nfunc process(data string) {\n\tdefer func() {\n\t\tif r := recover(); r != nil {\n\t\t\t// Handle \"error\"\n\t\t}\n\t}()\n\tvalidate(data)\n}\n// Should use error returns instead"
+    },
+    {
+      "name": "Error Wrapping",
+      "category": "Errors",
+      "definition": "Go 1.13+ provides error wrapping with fmt.Errorf using the %w verb, and errors.Unwrap, errors.Is, and errors.As for working with wrapped errors. This allows adding context while preserving the original error for checking.",
+      "keyCharacteristics": [
+        "fmt.Errorf with %w wraps errors",
+        "errors.Is checks error chain",
+        "errors.As extracts specific error type",
+        "errors.Unwrap returns wrapped error",
+        "Preserves error for type checking",
+        "Adds context at each layer"
+      ],
+      "whenToApply": "Wrap errors when propagating to add context. Use errors.Is for error checking. Use errors.As for extracting error details.",
+      "codeSmells": [
+        "Using %v instead of %w (loses error chain)",
+        "Using == to compare errors instead of errors.Is",
+        "Not adding context when wrapping",
+        "Type assertions instead of errors.As"
+      ],
+      "refactoringGuidance": "Use %w when wrapping errors. Use errors.Is for checking specific errors. Use errors.As for extracting error types.",
+      "goodExample": "var ErrNotFound = errors.New(\"not found\")\n\nfunc loadUser(id string) (*User, error) {\n\tuser, err := db.Query(id)\n\tif err != nil {\n\t\tif errors.Is(err, sql.ErrNoRows) {\n\t\t\treturn nil, fmt.Errorf(\"user %s: %w\", id, ErrNotFound)\n\t\t}\n\t\treturn nil, fmt.Errorf(\"loading user %s: %w\", id, err)\n\t}\n\treturn user, nil\n}\n\n// Checking wrapped errors\nuser, err := loadUser(\"123\")\nif errors.Is(err, ErrNotFound) {\n\t// Handle not found\n}\n\n// Extracting error type\nvar pathErr *os.PathError\nif errors.As(err, &pathErr) {\n\tfmt.Println(\"Path:\", pathErr.Path)\n}",
+      "badExample": "// Lost error chain with %v\nif err != nil {\n\treturn fmt.Errorf(\"loading user: %v\", err) // Should use %w\n}\n\n// Direct comparison\nif err == ErrNotFound { // Won't work if wrapped!\n\t// ...\n}\n// Should use: errors.Is(err, ErrNotFound)\n\n// Type assertion instead of errors.As\nif pathErr, ok := err.(*os.PathError); ok {\n\t// Won't work if wrapped\n}"
+    },
+    {
+      "name": "Web Servers",
+      "category": "Web",
+      "definition": "Go's net/http package provides a robust HTTP server implementation. The http.HandleFunc registers a handler for a pattern, and http.ListenAndServe starts the server. Handlers should be safe for concurrent execution.",
+      "keyCharacteristics": [
+        "Built-in HTTP server",
+        "Concurrent by default (each request in goroutine)",
+        "http.Handler and http.HandlerFunc interfaces",
+        "Pattern matching for routes",
+        "Middleware pattern via handler wrapping",
+        "Context for request-scoped values"
+      ],
+      "whenToApply": "Use net/http for building HTTP servers and services. Use middleware pattern for cross-cutting concerns.",
+      "codeSmells": [
+        "Not handling errors in handlers",
+        "Blocking operations without timeouts",
+        "Not setting proper HTTP status codes",
+        "Shared state without synchronization"
+      ],
+      "refactoringGuidance": "Use proper error handling in handlers. Set appropriate status codes. Use context for timeouts and cancellation.",
+      "goodExample": "func handler(w http.ResponseWriter, r *http.Request) {\n\tif r.Method != http.MethodGet {\n\t\thttp.Error(w, \"Method not allowed\", http.StatusMethodNotAllowed)\n\t\treturn\n\t}\n\t\n\tctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)\n\tdefer cancel()\n\t\n\tdata, err := fetchData(ctx)\n\tif err != nil {\n\t\thttp.Error(w, \"Internal error\", http.StatusInternalServerError)\n\t\treturn\n\t}\n\t\n\tw.Header().Set(\"Content-Type\", \"application/json\")\n\tw.WriteHeader(http.StatusOK)\n\tjson.NewEncoder(w).Encode(data)\n}\n\nfunc main() {\n\thttp.HandleFunc(\"/api/data\", handler)\n\tlog.Fatal(http.ListenAndServe(\":8080\", nil))\n}",
+      "badExample": "func handler(w http.ResponseWriter, r *http.Request) {\n\tdata := fetchData() // No timeout, blocks forever if stuck\n\tfmt.Fprintf(w, \"%v\", data) // No error handling, wrong content type\n}\n\nfunc main() {\n\thttp.HandleFunc(\"/\", handler)\n\thttp.ListenAndServe(\":8080\", nil) // Not checking error\n}"
+    }
+  ]
+}

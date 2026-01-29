@@ -1,0 +1,23 @@
+{
+  "name": "claude-code-ext",
+  "owner": {
+    "name": "Radosvet M",
+    "email": "radkomih@gmail.com"
+  },
+  "metadata": {
+    "description": "Claude Code custom extensions"
+  },
+  "plugins": [
+    {
+      "name": "code-quality",
+      "source": "./plugins/code-quality",
+      "description": "Comprehensive code quality review based on clean code best practices",
+      "version": "1.0.0",
+      "keywords": [
+        "review",
+        "quality",
+        "best-practices"
+      ]
+    }
+  ]
+}

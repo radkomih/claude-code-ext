@@ -1,0 +1,961 @@
+{
+  "metadata": {
+    "title": "Domain-Driven Design Principles",
+    "source": "Domain-Driven Design: Tackling Complexity in the Heart of Software by Eric Evans",
+    "version": "1.0",
+    "description": "Atomic principles extracted from the DDD book for use in code refactoring and design decisions"
+  },
+  "principles": [
+    {
+      "name": "Ubiquitous Language",
+      "category": "Strategic Design",
+      "definition": "A common, rigorous language shared between developers and domain experts, used in all communication and directly reflected in the code. The vocabulary includes names of classes, operations, and domain concepts.",
+      "keyCharacteristics": [
+        "Used consistently in all team communication (spoken, written, diagrams)",
+        "Directly reflected in code (class names, method names, module names)",
+        "Based on the domain model, not technical jargon",
+        "Evolves as the model evolves",
+        "Makes implicit concepts explicit",
+        "Eliminates ambiguity between business and technical terms"
+      ],
+      "whenToApply": [
+        "From the very beginning of a project",
+        "When domain experts and developers use different terms for the same concept",
+        "When technical terms obscure business meaning",
+        "When team members have different interpretations of the same term",
+        "During knowledge crunching sessions with domain experts"
+      ],
+      "codeSmells": [
+        "Business logic hidden in procedures with technical names",
+        "Developers translating between business terms and code terms",
+        "Domain experts don't understand conversations about the code",
+        "Multiple terms for the same concept in different parts of the system",
+        "Comments needed to explain what code represents in business terms",
+        "Method names like 'doProcess()' or 'handleData()' instead of domain-specific verbs"
+      ],
+      "refactoringGuidance": [
+        "Rename classes, methods, and modules to match domain terminology",
+        "Extract implicit concepts into explicit model elements",
+        "Work with domain experts to refine awkward or ambiguous terms",
+        "Document the language in a glossary that evolves with the model",
+        "Iron out difficulties by experimenting with alternative expressions",
+        "Recognize that a change in language is a change to the model",
+        "Make language usage pervasive - use it everywhere until it flows naturally"
+      ],
+      "examples": [
+        {
+          "bad": "class Booking { void deleteRows() { /* removes shipment data */ } }",
+          "good": "class Cargo { void clearRoute() { /* removes routing plan when specs change */ } }"
+        }
+      ]
+    },
+    {
+      "name": "Bounded Context",
+      "category": "Strategic Design",
+      "definition": "An explicit boundary within which a domain model applies. Within the boundary, all terms and concepts have specific meaning and the model is kept strictly consistent. Different models apply in different contexts.",
+      "keyCharacteristics": [
+        "Defines clear scope where a model is applicable and consistent",
+        "Aligned with team organization and ownership",
+        "Has physical manifestations (code base, database schema)",
+        "Contains its own Ubiquitous Language",
+        "Models can differ across context boundaries",
+        "Integration across boundaries requires explicit translation"
+      ],
+      "whenToApply": [
+        "When multiple models exist in a large system",
+        "When different teams work on different parts of the system",
+        "When integrating with external systems",
+        "When different parts of the domain have different consistency requirements",
+        "To prevent model fragmentation and confusion",
+        "When the same term means different things in different parts of the domain"
+      ],
+      "codeSmells": [
+        "Code fragmentation where similar concepts exist in multiple places",
+        "False cognates - same term with different meanings causing confusion",
+        "Duplicate concepts that need to be synchronized",
+        "Unclear where one model ends and another begins",
+        "Teams stepping on each other's code",
+        "Database contradictions from conflicting models",
+        "Integration code scattered throughout the system"
+      ],
+      "refactoringGuidance": [
+        "Explicitly map out existing contexts in the system",
+        "Define boundaries in terms of team organization and code ownership",
+        "Align physical code structure (modules, packages) with context boundaries",
+        "Create explicit translation layers at context boundaries",
+        "Document context boundaries and their relationships in a Context Map",
+        "Keep each context's model internally consistent",
+        "Don't share code across contexts without explicit integration strategy",
+        "Recognize that contexts are not the same as modules"
+      ],
+      "examples": [
+        {
+          "scenario": "E-commerce system",
+          "contexts": [
+            "Shopping Context: 'Product' focuses on catalog info, pricing, availability",
+            "Fulfillment Context: 'Product' focuses on physical dimensions, weight, shipping constraints",
+            "Accounting Context: 'Product' focuses on cost, revenue, tax categories"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Entity",
+      "category": "Building Blocks",
+      "definition": "An object defined primarily by its identity rather than its attributes. Entities have continuity through a life cycle and must be distinguished from other objects even when attributes are similar.",
+      "keyCharacteristics": [
+        "Has a unique identity that persists through time and state changes",
+        "Identity is fundamental, attributes are secondary",
+        "Can change form and content radically while maintaining continuity",
+        "Distinguished from other objects even with identical attributes",
+        "Thread of continuity must be maintained throughout lifecycle",
+        "Identity may be generated internally or come from external source"
+      ],
+      "whenToApply": [
+        "When objects need to be tracked across different states",
+        "When identity matters independent of attribute values",
+        "When objects have a lifecycle with significant state changes",
+        "When objects need to be matched or retrieved by identity",
+        "When mistaken identity would lead to data corruption",
+        "Examples: User accounts, orders, transactions, customers"
+      ],
+      "codeSmells": [
+        "Using object equality (==) for domain identity checks",
+        "No clear identity field or operation",
+        "Identity based on mutable attributes",
+        "Multiple objects representing the same entity without clear identity",
+        "Identity generation not guaranteed to be unique",
+        "Complex entities with too many attributes obscuring identity",
+        "Value objects being tracked by identity unnecessarily"
+      ],
+      "refactoringGuidance": [
+        "Define what it means to be 'the same thing' for each entity",
+        "Implement explicit identity operation (equals/hashCode based on ID)",
+        "Keep entity definition focused on identity and lifecycle",
+        "Strip entity down to intrinsic characteristics that define identity",
+        "Move behavior and attributes to associated objects when appropriate",
+        "Design means of distinguishing each object regardless of form or history",
+        "Ensure identity remains immutable once established",
+        "Use generated IDs when no natural key exists",
+        "For entities with natural keys, validate uniqueness constraints"
+      ],
+      "examples": [
+        {
+          "entity": "BankTransaction",
+          "identity": "Check number or transaction ID",
+          "rationale": "Two deposits of same amount on same day are still distinct transactions"
+        },
+        {
+          "entity": "Customer",
+          "identity": "Customer ID",
+          "attributes": "Name, address, phone used for matching but don't define identity"
+        }
+      ]
+    },
+    {
+      "name": "Value Object",
+      "category": "Building Blocks",
+      "definition": "An object that describes some characteristic of a thing and has no conceptual identity. Value Objects are defined by their attributes and are interchangeable when attributes match.",
+      "keyCharacteristics": [
+        "Defined by attributes, not identity",
+        "Immutable - cannot change state after creation",
+        "Interchangeable - any instance with same attributes is equivalent",
+        "Can be shared safely across entities",
+        "Should express a conceptual whole (Whole Value pattern)",
+        "Can contain other value objects or reference entities",
+        "Often used as attributes of entities"
+      ],
+      "whenToApply": [
+        "When you only care about attributes, not which instance you have",
+        "To describe characteristics or measurements",
+        "When objects represent descriptive aspects of the domain",
+        "For concepts like money, date ranges, addresses, colors",
+        "When immutability and shareability are beneficial",
+        "To reduce complexity of entities by extracting attributes"
+      ],
+      "codeSmells": [
+        "Value objects with mutable state",
+        "Value objects with identity fields or tracking",
+        "Primitive obsession - using primitives instead of value objects",
+        "Scattered attributes that should form a conceptual whole",
+        "Bidirectional associations between value objects",
+        "Value objects holding references meant to be tracked",
+        "Large entities with many primitive attributes that could be value objects"
+      ],
+      "refactoringGuidance": [
+        "Make value objects immutable",
+        "Implement value equality based on all attributes",
+        "Group related attributes into whole value objects",
+        "Consider pass-by-value semantics (copy when needed)",
+        "Eliminate bidirectional associations between value objects",
+        "Extract value objects from bloated entities",
+        "Design for safe sharing and copying",
+        "Use value objects to encapsulate complex calculations",
+        "Make value objects side-effect-free"
+      ],
+      "examples": [
+        {
+          "valueObject": "Address",
+          "attributes": ["street", "city", "state", "postalCode"],
+          "note": "Identity depends on context - Value Object in e-commerce, Entity in postal service"
+        },
+        {
+          "valueObject": "Money",
+          "attributes": ["amount", "currency"],
+          "operations": ["add", "subtract", "multiply"],
+          "note": "Immutable, interchangeable, no identity needed"
+        },
+        {
+          "valueObject": "DateRange",
+          "attributes": ["startDate", "endDate"],
+          "operations": ["overlaps", "contains", "duration"]
+        }
+      ]
+    },
+    {
+      "name": "Aggregate",
+      "category": "Building Blocks",
+      "definition": "A cluster of associated objects treated as a unit for data changes. Each aggregate has a root entity and a boundary. The root is the only member that external objects can hold references to.",
+      "keyCharacteristics": [
+        "Defines a consistency boundary",
+        "Has one root entity that controls access",
+        "Root has global identity, internals have local identity",
+        "Invariants enforced within aggregate boundaries",
+        "External objects can only reference the root",
+        "Transient references to internals allowed during operations",
+        "All changes go through the root"
+      ],
+      "whenToApply": [
+        "To define transaction boundaries for consistency",
+        "When groups of objects must change together to maintain invariants",
+        "To manage complexity of object relationships",
+        "To prevent unauthorized access to internal objects",
+        "When defining locking scope for concurrent access",
+        "To clarify ownership relationships in the model"
+      ],
+      "codeSmells": [
+        "Direct external references to internal aggregate objects",
+        "Invariants that span multiple aggregates",
+        "Unclear transaction boundaries",
+        "Aggregates that are too large or too small",
+        "No clear root entity",
+        "External objects modifying internal aggregate state directly",
+        "Cascading updates across multiple aggregates",
+        "Concurrent access issues from improper locking scope"
+      ],
+      "refactoringGuidance": [
+        "Identify natural consistency boundaries in the domain",
+        "Choose one entity as the aggregate root",
+        "Enforce that external access only goes through the root",
+        "Make root responsible for checking all aggregate invariants",
+        "Root should provide methods that maintain invariants",
+        "Delete operation should remove entire aggregate",
+        "Only root should be retrievable via repository queries",
+        "Consider splitting aggregates that are too large",
+        "Design aggregates based on consistency requirements, not just associations",
+        "Allow only roots to hold references to other aggregate roots"
+      ],
+      "examples": [
+        {
+          "aggregate": "Car",
+          "root": "Car entity",
+          "internals": ["Tires with local identity", "Engine (sometimes separate aggregate)"],
+          "invariants": ["Each wheel position has exactly one tire", "Total tire mileage equals sum of position mileages"]
+        },
+        {
+          "aggregate": "PurchaseOrder",
+          "root": "PurchaseOrder entity",
+          "internals": ["LineItems"],
+          "invariants": ["Sum of line item amounts <= PO approved limit"],
+          "note": "Concurrent edits to different line items need aggregate-level locking"
+        }
+      ]
+    },
+    {
+      "name": "Repository",
+      "category": "Building Blocks",
+      "definition": "Provides the illusion of an in-memory collection of all objects of a certain type. Encapsulates database access and reconstitution of objects, presenting a simple interface for retrieving aggregate roots.",
+      "keyCharacteristics": [
+        "Acts like a collection with querying capability",
+        "Only created for aggregate roots that need global access",
+        "Encapsulates storage and query technology",
+        "Provides methods to add, remove, and find objects",
+        "Returns fully instantiated objects",
+        "Client talks in terms of the model, not database",
+        "Hides complex data retrieval machinery"
+      ],
+      "whenToApply": [
+        "For aggregate roots that need to be retrieved by clients",
+        "To decouple domain model from persistence technology",
+        "When you need flexible querying of domain objects",
+        "To centralize data access logic",
+        "When you want to substitute implementations (e.g., for testing)",
+        "To communicate design decisions about object access"
+      ],
+      "codeSmells": [
+        "Data access code scattered throughout domain objects",
+        "Domain objects depending on persistence framework",
+        "Complex SQL queries in business logic",
+        "No clear way to retrieve objects",
+        "Direct database access from application services",
+        "Repositories for non-root entities",
+        "Repository methods returning partially initialized objects",
+        "Repositories that expose database concepts to clients"
+      ],
+      "refactoringGuidance": [
+        "Create repositories only for aggregate roots",
+        "Design interface in terms of the domain model, not database",
+        "Encapsulate all data access behind repository interface",
+        "Provide methods that select objects based on domain criteria",
+        "Return fully reconstituted aggregates",
+        "Consider specification pattern for complex queries",
+        "Separate query methods from command methods where appropriate",
+        "Use repositories to communicate access patterns in the design",
+        "Keep implementation details hidden from clients",
+        "Provide hard-coded query methods for common cases"
+      ],
+      "examples": [
+        {
+          "repository": "CustomerRepository",
+          "methods": [
+            "findById(CustomerId): Customer",
+            "findByEmail(String): Customer",
+            "findActiveCustomersInRegion(Region): Collection<Customer>",
+            "save(Customer)",
+            "remove(Customer)"
+          ]
+        },
+        {
+          "repository": "TradeOrderRepository",
+          "methods": [
+            "forTrackingId(String): TradeOrder",
+            "outstandingForBrokerageAccount(String): Collection<TradeOrder>",
+            "matching(Specification): Collection<TradeOrder>"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Factory",
+      "category": "Building Blocks",
+      "definition": "Encapsulates the knowledge and process of creating complex objects and aggregates. Provides an interface that reflects client goals and abstracts the construction details.",
+      "keyCharacteristics": [
+        "Responsibility is creating other objects",
+        "Hides construction complexity",
+        "Creates entire aggregates as a piece",
+        "Enforces all invariants of created objects",
+        "Each creation method is atomic",
+        "Abstracted to type desired, not concrete class",
+        "May be a factory method, abstract factory, or standalone factory"
+      ],
+      "whenToApply": [
+        "When object creation is complex",
+        "When creation logic doesn't belong in the object being created",
+        "To enforce aggregate invariants during creation",
+        "When you want to hide concrete classes",
+        "When creation involves assembling multiple related objects",
+        "To centralize creation rules and policies"
+      ],
+      "codeSmells": [
+        "Complex constructors with many parameters",
+        "Object creation logic scattered throughout code",
+        "Objects created in invalid states",
+        "Client code depends on concrete classes",
+        "Duplicate creation logic",
+        "Creation logic mixed with business logic",
+        "Invariants not enforced at creation time",
+        "Complicated object assembly in client code"
+      ],
+      "refactoringGuidance": [
+        "Extract complex construction into factory method or class",
+        "Make factory atomic - produce valid object or fail clearly",
+        "Enforce all invariants in factory",
+        "Place factory close to objects with natural relationship to product",
+        "Use factory method on aggregate root for creating internal entities",
+        "Create standalone factory when no natural host exists",
+        "Factory should produce entire aggregate, not just root",
+        "Return abstract interface, hide concrete implementation",
+        "Consider factory for reconstitution from database (work with repository)"
+      ],
+      "examples": [
+        {
+          "pattern": "Factory Method on Aggregate Root",
+          "example": "PurchaseOrder.newLineItem(Part, quantity) - hides internal LineItem creation"
+        },
+        {
+          "pattern": "Factory Method on Related Entity",
+          "example": "BrokerageAccount.createTradeOrder(security, shares) - embeds account info and enforces trading rules"
+        },
+        {
+          "pattern": "Standalone Factory",
+          "example": "LoanFactory.createLoan(terms, applicant) - complex validation and assembly"
+        }
+      ]
+    },
+    {
+      "name": "Service",
+      "category": "Building Blocks",
+      "definition": "An operation that represents a domain concept that doesn't naturally belong to an entity or value object. Services are stateless operations defined in terms of the domain model.",
+      "keyCharacteristics": [
+        "Represents domain operation, not a thing",
+        "Stateless - no state affects behavior",
+        "Interface defined in terms of domain model elements",
+        "Named for activity (verb), not entity (noun)",
+        "Can exist in domain, application, or infrastructure layers",
+        "Parameters and results are domain objects",
+        "Part of ubiquitous language"
+      ],
+      "whenToApply": [
+        "When operation doesn't naturally belong to an entity or value object",
+        "For significant domain processes or transformations",
+        "When operation involves multiple domain objects",
+        "For calculations that don't fit one object",
+        "When forcing into an entity would distort its meaning",
+        "Domain Services: transfer funds, calculate route, authenticate user"
+      ],
+      "codeSmells": [
+        "Entities or value objects with operations that don't fit their concept",
+        "Anemic domain model - all logic in services",
+        "Services that should be entity behavior",
+        "Manager/Handler/Processor classes with no clear domain meaning",
+        "Stateful services holding domain state",
+        "Services in wrong layer (domain vs. application vs. infrastructure)",
+        "Too many services stripping behavior from entities"
+      ],
+      "refactoringGuidance": [
+        "First try to place behavior in entity or value object",
+        "Create service only when it truly doesn't belong to an object",
+        "Define interface using ubiquitous language",
+        "Keep service stateless",
+        "Distinguish domain services from application services",
+        "Domain service: significant domain concept, contains business logic",
+        "Application service: orchestrates domain objects, no business logic",
+        "Name services after activities in the domain",
+        "Three characteristics: relates to domain concept, interface in terms of model, stateless"
+      ],
+      "examples": [
+        {
+          "service": "FundsTransferService",
+          "type": "Domain Service",
+          "operation": "transfer(fromAccount, toAccount, amount)",
+          "note": "Involves two accounts, represents banking domain concept"
+        },
+        {
+          "service": "RoutingService",
+          "type": "Domain Service",
+          "operation": "calculateRoute(origin, destination, constraints)",
+          "note": "Complex calculation not natural for any one entity"
+        }
+      ]
+    },
+    {
+      "name": "Module",
+      "category": "Building Blocks",
+      "definition": "Organizes related domain concepts into cohesive units. Module names become part of the ubiquitous language and should reflect domain insight, not technical partitioning.",
+      "keyCharacteristics": [
+        "Communicates conceptual organization",
+        "Names reflect domain concepts",
+        "Low coupling between modules",
+        "High cohesion within modules",
+        "Should coevolve with the model",
+        "Tell the story of the system",
+        "Part of ubiquitous language"
+      ],
+      "whenToApply": [
+        "To organize complex domains into understandable chunks",
+        "When concepts naturally group together",
+        "To limit cognitive load by chunking related concepts",
+        "To communicate design structure",
+        "To enforce architectural boundaries"
+      ],
+      "codeSmells": [
+        "Modules named after technical layers (controllers, services, models)",
+        "Modules not reflecting domain concepts",
+        "High coupling between modules",
+        "Low cohesion within modules",
+        "Module structure never refactored",
+        "Module names not used in conversations",
+        "Framework-driven packaging obscuring domain structure"
+      ],
+      "refactoringGuidance": [
+        "Name modules after domain concepts, not technical patterns",
+        "Choose modules that tell story of the system",
+        "Seek conceptually cohesive groups of objects",
+        "Minimize coupling between modules",
+        "Refactor modules as understanding deepens",
+        "Use module names in conversation with domain experts",
+        "Modules are chapters in the domain story",
+        "Avoid infrastructure-driven packaging schemes",
+        "Keep domain objects together even if technically separated"
+      ],
+      "examples": [
+        {
+          "good": "modules: shipping.booking, shipping.routing, shipping.tracking",
+          "bad": "modules: controllers, services, repositories, entities"
+        }
+      ]
+    },
+    {
+      "name": "Layered Architecture",
+      "category": "Architecture",
+      "definition": "Separates concerns into layers: User Interface, Application, Domain, and Infrastructure. The Domain layer contains the business logic and is isolated from technical concerns.",
+      "keyCharacteristics": [
+        "Domain layer isolated from infrastructure and UI",
+        "Each layer depends only on layers below",
+        "Domain layer is the heart of the software",
+        "Infrastructure provides technical capabilities",
+        "Application layer coordinates domain objects",
+        "UI layer presents information and accepts input"
+      ],
+      "whenToApply": [
+        "In all domain-driven designs",
+        "To separate business logic from technical concerns",
+        "To make domain model clear and testable",
+        "When domain complexity justifies the investment"
+      ],
+      "codeSmells": [
+        "Business logic in UI or infrastructure code",
+        "Domain objects depending on frameworks",
+        "Database concerns mixed with business rules",
+        "Application logic in domain objects",
+        "No clear separation of concerns",
+        "Can't test business logic without full stack"
+      ],
+      "refactoringGuidance": [
+        "Extract domain logic from UI and infrastructure",
+        "Create clear interfaces between layers",
+        "Make domain layer framework-independent",
+        "Move coordination logic to application layer",
+        "Keep domain focused on business rules",
+        "Use dependency inversion for infrastructure dependencies"
+      ],
+      "examples": []
+    },
+    {
+      "name": "Anti-Corruption Layer",
+      "category": "Context Mapping",
+      "definition": "An isolating layer that translates between your domain model and external systems or legacy code. Prevents the external model from corrupting your clean model.",
+      "keyCharacteristics": [
+        "Translates between different models",
+        "Protects domain model from external influence",
+        "Reabstracts external concepts in your domain terms",
+        "One-way dependency (your model doesn't depend on external)",
+        "May contain adapters, facades, and translators",
+        "Exposes only features your application needs"
+      ],
+      "whenToApply": [
+        "When integrating with legacy systems",
+        "When external system has incompatible model",
+        "To prevent external concepts from invading your model",
+        "When you can't change the external system",
+        "To maintain model integrity at boundaries"
+      ],
+      "codeSmells": [
+        "External system concepts leaking into your model",
+        "Direct dependencies on external system interfaces",
+        "Your model distorted to accommodate external system",
+        "Translation logic scattered throughout code",
+        "Confusion between your concepts and external concepts"
+      ],
+      "refactoringGuidance": [
+        "Create explicit layer between your model and external system",
+        "Translate external concepts to your domain language",
+        "Facade external system to expose only needed features",
+        "Make translation explicit and centralized",
+        "Keep external model from influencing your design decisions"
+      ],
+      "examples": [
+        {
+          "scenario": "Integrating with Sales Management System",
+          "approach": "Create AllocationChecker class that translates sales data into domain concepts like EnterpriseSegment"
+        }
+      ]
+    },
+    {
+      "name": "Shared Kernel",
+      "category": "Context Mapping",
+      "definition": "A subset of the domain model shared between two bounded contexts. Both teams agree not to change it without consultation and coordinate continuous integration of the shared parts.",
+      "keyCharacteristics": [
+        "Explicitly shared between teams",
+        "Requires coordination to change",
+        "Usually small, carefully chosen subset",
+        "Reduces duplication across contexts",
+        "Both teams must agree on changes",
+        "Often includes core domain or generic subdomains"
+      ],
+      "whenToApply": [
+        "When two teams have significant overlap in models",
+        "When teams can coordinate closely",
+        "To reduce translation burden between related contexts",
+        "When core domain is shared across teams",
+        "When cost of coordination is less than cost of duplication"
+      ],
+      "codeSmells": [
+        "Shared code changed without coordination",
+        "Shared kernel too large",
+        "No clear agreement on what is shared",
+        "Teams avoiding changes because of sharing overhead",
+        "Confusion about ownership of shared code"
+      ],
+      "refactoringGuidance": [
+        "Explicitly define what is in shared kernel",
+        "Keep shared kernel small",
+        "Establish process for coordinating changes",
+        "Both teams test against shared kernel",
+        "Consider splitting if coordination becomes too difficult",
+        "Document shared kernel boundaries clearly"
+      ],
+      "examples": []
+    },
+    {
+      "name": "Customer-Supplier",
+      "category": "Context Mapping",
+      "definition": "Two teams in upstream-downstream relationship where downstream depends on upstream. Establish clear customer-supplier relationship with automated acceptance tests for the interface.",
+      "keyCharacteristics": [
+        "Clear upstream (supplier) and downstream (customer) relationship",
+        "Downstream team's needs drive upstream planning",
+        "Automated tests define interface contract",
+        "Formal planning and negotiation process",
+        "Works best when teams are in same organization"
+      ],
+      "whenToApply": [
+        "When downstream needs must be met by upstream",
+        "When teams can establish planning relationship",
+        "When downstream has leverage to influence upstream",
+        "To formalize interdependent team relationship"
+      ],
+      "codeSmells": [
+        "Downstream blocked waiting for upstream changes",
+        "No formal planning between teams",
+        "Interface changes break downstream without warning",
+        "Upstream ignores downstream needs"
+      ],
+      "refactoringGuidance": [
+        "Establish planning process between teams",
+        "Downstream defines acceptance tests",
+        "Upstream commits to meeting interface contract",
+        "Automate interface testing",
+        "Regular planning meetings to align priorities"
+      ],
+      "examples": []
+    },
+    {
+      "name": "Conformist",
+      "category": "Context Mapping",
+      "definition": "Downstream team conforms completely to the upstream model. Used when upstream has no motivation to meet downstream needs or when shared model is actually beneficial.",
+      "keyCharacteristics": [
+        "Downstream adopts upstream model completely",
+        "No translation layer needed",
+        "Simplicity of shared model",
+        "Loss of downstream modeling flexibility",
+        "One-sided relationship",
+        "Must be done wholeheartedly"
+      ],
+      "whenToApply": [
+        "When upstream won't accommodate your needs",
+        "When cost of translation exceeds benefits",
+        "When upstream model is actually good for your needs",
+        "When you lack resources for translation layer",
+        "When integration is not mission-critical"
+      ],
+      "codeSmells": [
+        "Half-hearted conformance with workarounds",
+        "Upstream model causing problems in downstream",
+        "Resentment about conforming",
+        "Complex workarounds to deal with upstream model",
+        "Should be using anti-corruption layer instead"
+      ],
+      "refactoringGuidance": [
+        "Either conform wholeheartedly or use anti-corruption layer",
+        "Don't try to fight upstream model if conforming",
+        "Accept upstream model constraints",
+        "Extend through subclassing, not modification",
+        "Consider if anti-corruption layer would be better investment"
+      ],
+      "examples": []
+    },
+    {
+      "name": "Open Host Service",
+      "category": "Context Mapping",
+      "definition": "Define a protocol that gives access to your subsystem as a set of services. Open the protocol for all who need to integrate with you, enhancing and expanding to handle new requirements.",
+      "keyCharacteristics": [
+        "Standardized protocol for access",
+        "Serves multiple clients",
+        "API designed for ease of integration",
+        "Protocol evolves to serve clients",
+        "Often combined with Published Language",
+        "Insulates your model from client diversity"
+      ],
+      "whenToApply": [
+        "When you have multiple clients integrating with you",
+        "When you want to insulate your model from client needs",
+        "To provide standardized access to your context",
+        "When you can afford to design and maintain a public API"
+      ],
+      "codeSmells": [
+        "Custom integration for each client",
+        "Internal model exposed directly to clients",
+        "No standardized access protocol",
+        "Clients tightly coupled to your implementation"
+      ],
+      "refactoringGuidance": [
+        "Design cohesive service protocol",
+        "Translate between internal model and protocol",
+        "Version and evolve protocol carefully",
+        "Document protocol as Published Language",
+        "Consider RESTful APIs, GraphQL, etc."
+      ],
+      "examples": []
+    },
+    {
+      "name": "Published Language",
+      "category": "Context Mapping",
+      "definition": "A well-documented shared language that can express necessary domain information as a common medium of communication, translating as necessary into and out of that language.",
+      "keyCharacteristics": [
+        "Well-documented interchange format",
+        "Independent of any single model",
+        "Used for integration between contexts",
+        "Often XML, JSON schemas, or protocol definitions",
+        "Must be maintained and evolved carefully",
+        "Common examples: industry standard formats"
+      ],
+      "whenToApply": [
+        "For integration with multiple external systems",
+        "When industry standards exist",
+        "Combined with Open Host Service",
+        "When you need stable interchange format",
+        "For asynchronous integration"
+      ],
+      "codeSmells": [
+        "Ad-hoc interchange formats",
+        "Undocumented integration protocols",
+        "Each integration using different format",
+        "Direct model exposure for integration"
+      ],
+      "refactoringGuidance": [
+        "Define and document interchange format",
+        "Use standard formats when available",
+        "Translate to/from internal model explicitly",
+        "Version published language carefully",
+        "Provide schemas and documentation"
+      ],
+      "examples": [
+        {
+          "example": "HL7 for healthcare integration",
+          "example2": "JSON API specification for REST services"
+        }
+      ]
+    },
+    {
+      "name": "Context Map",
+      "category": "Strategic Design",
+      "definition": "A document that outlines the different bounded contexts in the system and their relationships. Shows the big picture of contexts and their integration patterns.",
+      "keyCharacteristics": [
+        "Visual representation of all contexts",
+        "Shows relationships between contexts",
+        "Identifies integration patterns being used",
+        "Communication and planning tool",
+        "Should be maintained as system evolves",
+        "Makes implicit context boundaries explicit"
+      ],
+      "whenToApply": [
+        "On all projects with multiple bounded contexts",
+        "When planning large-scale system architecture",
+        "To communicate system structure to team",
+        "During legacy system modernization",
+        "When coordinating multiple teams"
+      ],
+      "codeSmells": [
+        "No clear understanding of context boundaries",
+        "Teams confused about system structure",
+        "Unclear how systems integrate",
+        "No coordination of integration strategy",
+        "Discovery of contexts only when things break"
+      ],
+      "refactoringGuidance": [
+        "Map out all existing bounded contexts",
+        "Identify and document relationships",
+        "Name the integration patterns being used",
+        "Share with all teams",
+        "Update as contexts evolve",
+        "Use to plan refactoring and new features"
+      ],
+      "examples": []
+    },
+    {
+      "name": "Continuous Integration",
+      "category": "Strategic Design",
+      "definition": "Within a bounded context, frequently merge all code and model concepts to detect and resolve fragmentation quickly. Use automated tests to ensure model integrity.",
+      "keyCharacteristics": [
+        "Frequent integration (at least daily)",
+        "Automated build and tests",
+        "Detects model fragmentation early",
+        "Keeps model unified within context",
+        "Tests verify model invariants",
+        "Team communication about model"
+      ],
+      "whenToApply": [
+        "Within every bounded context",
+        "When multiple people work on same model",
+        "To prevent model fragmentation",
+        "As part of Agile development practices"
+      ],
+      "codeSmells": [
+        "Long-lived branches",
+        "Integration surprises",
+        "Model concepts diverging",
+        "Terms meaning different things to different developers",
+        "Integration only at milestones",
+        "Breaking changes discovered late"
+      ],
+      "refactoringGuidance": [
+        "Integrate code at least daily",
+        "Automate build and test",
+        "Test model invariants",
+        "Quick feedback on integration issues",
+        "Frequent team communication about model",
+        "Pair programming to share understanding"
+      ],
+      "examples": []
+    },
+    {
+      "name": "Model-Driven Design",
+      "category": "Core Principle",
+      "definition": "Design a portion of the software system to reflect the domain model very literally, so that mapping is obvious. The code becomes an expression of the model.",
+      "keyCharacteristics": [
+        "Tight binding between model and implementation",
+        "Code expresses model explicitly",
+        "Changes to code may be changes to model",
+        "Model and design inform each other",
+        "Mapping between model and code is obvious",
+        "Supports ubiquitous language in code"
+      ],
+      "whenToApply": [
+        "In all DDD projects",
+        "When domain complexity justifies the investment",
+        "When domain experts and developers collaborate closely",
+        "When code needs to reflect business rules clearly"
+      ],
+      "codeSmells": [
+        "Model and code tell different stories",
+        "Complex mapping between model and implementation",
+        "Model documentation doesn't match code",
+        "Developers can't explain code using domain terms",
+        "Anemic domain model with logic in services",
+        "Technical concerns obscuring domain logic"
+      ],
+      "refactoringGuidance": [
+        "Make code reflect model explicitly",
+        "Name classes and methods after model elements",
+        "Model and code should evolve together",
+        "Refactor code when model changes",
+        "Revisit model if code becomes awkward",
+        "Use ubiquitous language in code",
+        "Make relationships in code match model"
+      ],
+      "examples": []
+    },
+    {
+      "name": "Domain Events",
+      "category": "Building Blocks",
+      "definition": "Something significant that happened in the domain that domain experts care about. Events are immutable records of things that happened, often triggering subsequent actions.",
+      "keyCharacteristics": [
+        "Represents something that happened in the past",
+        "Named in past tense (OrderPlaced, PaymentReceived)",
+        "Immutable - cannot be changed after creation",
+        "May trigger side effects in other parts of the system",
+        "Part of the ubiquitous language",
+        "Can be stored for audit trail or event sourcing"
+      ],
+      "whenToApply": [
+        "When domain experts talk about things that happen",
+        "To model state transitions explicitly",
+        "For audit trails and history",
+        "To decouple different parts of the system",
+        "When one action should trigger others",
+        "In event-driven or event-sourced architectures"
+      ],
+      "codeSmells": [
+        "Important domain events not captured in model",
+        "Tight coupling between aggregates",
+        "Implicit side effects",
+        "No record of what happened and when",
+        "Scattered event handling logic",
+        "Domain logic in infrastructure event handlers"
+      ],
+      "refactoringGuidance": [
+        "Identify significant domain events from discussions with experts",
+        "Make events explicit in the model",
+        "Name events after what happened (past tense)",
+        "Make events immutable",
+        "Include relevant data at time of event",
+        "Use events to communicate between aggregates",
+        "Consider event store for history",
+        "Keep handlers focused and side-effect-free in domain"
+      ],
+      "examples": [
+        {
+          "event": "OrderPlaced",
+          "data": ["orderId", "customerId", "items", "timestamp"],
+          "triggers": ["Send confirmation email", "Update inventory", "Start fulfillment process"]
+        },
+        {
+          "event": "PaymentReceived",
+          "data": ["paymentId", "amount", "orderId", "timestamp"],
+          "triggers": ["Update order status", "Record in accounting"]
+        }
+      ]
+    }
+  ],
+  "usageGuidance": {
+    "refactoringWorkflow": [
+      "1. Understand the domain through knowledge crunching with experts",
+      "2. Establish ubiquitous language for the bounded context",
+      "3. Identify entities, value objects, and their relationships",
+      "4. Define aggregate boundaries based on invariants",
+      "5. Create repositories for aggregate roots",
+      "6. Use factories for complex object creation",
+      "7. Introduce services only when behavior doesn't fit entities/values",
+      "8. Organize code with modules based on domain concepts",
+      "9. Implement layered architecture to isolate domain",
+      "10. Define context boundaries and integration patterns",
+      "11. Create context map to communicate system structure",
+      "12. Continuously integrate within each context"
+    ],
+    "designDecisionTree": {
+      "doesItHaveIdentity": {
+        "yes": "Consider Entity - focus on identity and lifecycle",
+        "no": "Consider Value Object - focus on attributes, make immutable"
+      },
+      "isItAGroupOfObjects": {
+        "yes": "Define Aggregate - identify root, set boundaries, enforce invariants"
+      },
+      "doesItBelongToAnObject": {
+        "no": "Consider Service - ensure it's truly a domain concept, make stateless"
+      },
+      "doesItNeedGlobalAccess": {
+        "yes": "Create Repository - only for aggregate roots"
+      },
+      "isCreationComplex": {
+        "yes": "Introduce Factory - encapsulate construction, enforce invariants"
+      }
+    },
+    "contextMappingDecisionTree": {
+      "sameTeam": {
+        "yes": "Consider Shared Kernel or unified context"
+      },
+      "canYouInfluenceUpstream": {
+        "yes": "Customer-Supplier relationship",
+        "no": {
+          "isUpstreamImportant": {
+            "yes": "Anti-Corruption Layer",
+            "no": "Conformist"
+          }
+        }
+      },
+      "multipleDownstreamClients": {
+        "yes": "Open Host Service + Published Language"
+      }
+    }
+  }
+}

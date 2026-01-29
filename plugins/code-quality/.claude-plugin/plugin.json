@@ -1,0 +1,14 @@
+{
+  "name": "code-quality",
+  "description": "Comprehensive code quality plugin improving code maintainability and extensibility.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Radosvet M"
+  },
+  "repository": "https://github.com/radkomih/claude-code-ext",
+  "keywords": [
+    "review",
+    "quality",
+    "best-practices"
+  ]
+}

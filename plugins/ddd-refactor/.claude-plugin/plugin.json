@@ -1,0 +1,16 @@
+{
+  "name": "ddd-refactor",
+  "description": "Domain-Driven Design refactoring assistant DDD principles",
+  "version": "1.0.0",
+  "author": {
+    "name": "Radosvet M"
+  },
+  "repository": "https://github.com/radkomih/claude-code-ext",
+  "keywords": [
+    "ddd",
+    "domain-driven-design",
+    "refactoring",
+    "architecture",
+    "design-patterns"
+  ]
+}

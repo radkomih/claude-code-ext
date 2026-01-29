@@ -1,0 +1,16 @@
+{
+  "name": "effective-go",
+  "description": "Go best practices and code quality checker based on official Effective Go guide",
+  "version": "1.0.0",
+  "author": {
+    "name": "Radosvet M"
+  },
+  "repository": "https://github.com/radkomih/claude-code-ext",
+  "keywords": [
+    "go",
+    "golang",
+    "effective-go",
+    "best-practices",
+    "code-quality"
+  ]
+}
