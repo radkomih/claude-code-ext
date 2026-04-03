@@ -1,0 +1,22 @@
+{
+  "name": "secure-reliable-systems",
+  "description": "Security and reliability principles distilled from Google's 'Building Secure and Reliable Systems'.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Radosvet M"
+  },
+  "repository": "https://github.com/radkomih/claude-code-ext",
+  "keywords": [
+    "security",
+    "reliability",
+    "least-privilege",
+    "resilience",
+    "incident-response"
+  ],
+  "skills": [
+    {
+      "name": "secure-reliable-systems",
+      "path": "skills/secure-reliable-systems/SKILL.md"
+    }
+  ]
+}

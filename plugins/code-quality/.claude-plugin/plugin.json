@@ -10,5 +10,12 @@
     "review",
     "quality",
     "best-practices"
+  ],
+  "skills": [
+    {
+      "name": "code-review",
+      "path": "skills/code-review/SKILL.md",
+      "tools": ["Read", "Grep", "Glob", "Bash"]
+    }
   ]
 }

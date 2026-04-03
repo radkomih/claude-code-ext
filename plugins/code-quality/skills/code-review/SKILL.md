@@ -1,20 +1,17 @@
 ---
 name: code-review
-description: Reviews code for quality, security, maintainability, and adherence to Clean Code principles. Use when reviewing code, analyzing pull requests, checking code quality, or when code modifications are made.
-allowed-tools: Read, Grep, Glob, Bash
+description: Reviews code for quality, security, maintainability, and adherence to Clean Code principles. Use ANY time code is written, modified, or shared — including PR reviews, post-implementation checks, refactoring analysis, or whenever the user asks whether code looks right. Don't wait for an explicit review request; if code was just changed or written, this skill applies.
 ---
 
 # Code Review Skill
 
 Comprehensive code review framework based on Clean Code principles and industry best practices.
 
-## When to Use This Skill
+## Prerequisites
 
-- Reviewing pull requests or merge requests
-- Analyzing code quality in existing codebases
-- Checking recent code changes for issues
-- Ensuring adherence to best practices
-- Identifying technical debt
+Before starting the review, read `CHECKLIST.md` (in this skill's directory).
+
+It contains the full Clean Code rule set to apply during the review.
 
 ## Review Approach
 
@@ -117,7 +114,6 @@ For each issue:
 
 ## Additional Resources
 
-- [CHECKLIST.md](CHECKLIST.md) - Complete Clean Code checklist with all rules
 - Use git commands to focus on recent changes: `git diff`, `git log`
 
 ## Review Process

@@ -1,30 +1,15 @@
 ---
 name: ddd-refactor
-description: Analyzes and refactors code using Domain-Driven Design principles. Use when refactoring domain models, identifying DDD anti-patterns, improving domain clarity, or applying tactical/strategic DDD patterns.
-allowed-tools: Read, Grep, Glob, Bash, Edit, Write
+description: Analyzes and refactors code using Domain-Driven Design principles. Use whenever the user mentions domain models, bounded contexts, aggregates, anemic models, ubiquitous language, or DDD — and also when you notice business logic leaking into services, missing domain events, or unclear ownership of business rules, even if the user doesn't explicitly ask for DDD.
 ---
 
 # DDD Refactor Skill
 
 Comprehensive Domain-Driven Design refactoring framework based on Eric Evans' DDD principles.
 
-## When to Use This Skill
-
-- Refactoring domain models and business logic
-- Identifying anemic domain models
-- Defining bounded contexts
-- Applying tactical DDD patterns (Entity, Value Object, Aggregate)
-- Improving domain clarity and ubiquitous language
-- Analyzing code for DDD anti-patterns
-- Architecting domain-centric systems
-
 ## Prerequisites
 
-**CRITICAL**: Always load the DDD principles first:
-
-```bash
-Read: plugins/ddd-refactor/resources/ddd-principles.json
-```
+Always read `resources/ddd-principles.json` (in this skill's directory) before starting.
 
 This JSON contains 19+ principles with definitions, code smells, and refactoring guidance.
 
@@ -51,20 +36,11 @@ This JSON contains 19+ principles with definitions, code smells, and refactoring
 - Repositories exposing internal entities
 - Bidirectional dependencies across contexts
 
-**Technical Exploration:**
-```bash
-# Find potential entities
-grep -r "class.*Entity" --include="*.{js,ts,java,cs,py}"
-
-# Find service classes (potential logic that belongs in domain)
-grep -r "class.*Service" --include="*.{js,ts,java,cs,py}"
-
-# Find repositories
-grep -r "Repository" --include="*.{js,ts,java,cs,py}"
-
-# Find domain events (or lack thereof)
-grep -r "Event\|event" --include="*.{js,ts,java,cs,py}"
-```
+**Technical Exploration** — search the codebase for:
+- Pattern `class.*Entity` in `*.{js,ts,java,cs,py}` files — find potential entities
+- Pattern `class.*Service` — find service classes that may contain misplaced domain logic
+- Pattern `Repository` — find existing repositories
+- Pattern `Event` — find domain events (or identify their absence)
 
 #### Phase 2: Strategic Refactoring Plan (10-15 min)
 

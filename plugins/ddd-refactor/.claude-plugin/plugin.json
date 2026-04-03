@@ -12,5 +12,12 @@
     "refactoring",
     "architecture",
     "design-patterns"
+  ],
+  "skills": [
+    {
+      "name": "ddd-refactor",
+      "path": "skills/ddd-refactor/SKILL.md",
+      "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"]
+    }
   ]
 }

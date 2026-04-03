@@ -12,5 +12,12 @@
     "effective-go",
     "best-practices",
     "code-quality"
+  ],
+  "skills": [
+    {
+      "name": "effective-go",
+      "path": "skills/effective-go/SKILL.md",
+      "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"]
+    }
   ]
 }

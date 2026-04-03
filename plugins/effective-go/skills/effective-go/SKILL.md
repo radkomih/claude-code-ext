@@ -1,33 +1,17 @@
 ---
 name: effective-go
-description: Analyzes and refactors Go code using Effective Go principles. Use when refactoring Go code, identifying anti-patterns, improving Go idioms, or applying Go best practices.
-allowed-tools: Read, Grep, Glob, Bash, Edit, Write
+description: Analyzes and refactors Go code using Effective Go principles. Use whenever Go code is written, reviewed, or modified — including goroutine issues, error handling, naming, interfaces, or formatting. Also trigger when the user asks whether their Go code is idiomatic, even without mentioning "Effective Go" by name.
 ---
 
 # Effective Go Skill
 
 Comprehensive Go refactoring framework based on the official Effective Go guide and Go best practices.
 
-## When to Use This Skill
-
-- Refactoring Go code for idiomatic patterns
-- Identifying Go-specific anti-patterns
-- Improving code formatting and style
-- Applying proper error handling patterns
-- Optimizing concurrency patterns (goroutines, channels)
-- Implementing proper naming conventions
-- Analyzing interface and method design
-- Reviewing receiver types (pointer vs value)
-
 ## Prerequisites
 
-**CRITICAL**: Always load the Effective Go principles first:
+Always read `resources/effective-go-principles.json` (in this skill's directory) before starting.
 
-```bash
-Read: plugins/effective-go/resources/effective-go-principles.json
-```
-
-This JSON contains 25+ principles with definitions, code smells, and refactoring guidance including:
+It contains 25+ principles with definitions, code smells, and refactoring guidance including:
 - Formatting (gofmt, semicolons)
 - Naming (packages, interfaces, exported names)
 - Control structures (if, for, switch, defer)
@@ -61,29 +45,14 @@ This JSON contains 25+ principles with definitions, code smells, and refactoring
 - Large interfaces (>3 methods for non-standard libs)
 - Primitive obsession (no custom types)
 
-**Technical Exploration:**
-```bash
-# Check if code is gofmt'd
-gofmt -l . | grep -v "vendor/"
-
-# Find exported names that might be wrong
-grep -r "^func [a-z]" --include="*.go"
-grep -r "^type [a-z]" --include="*.go"
-
-# Find potential goroutine issues
-grep -r "go func" --include="*.go"
-grep -r "go " --include="*.go" | grep -v "go func"
-
-# Find error handling
-grep -r "err :=" --include="*.go"
-grep -r "if err" --include="*.go"
-
-# Find panic usage
-grep -r "panic(" --include="*.go"
-
-# Find interfaces
-grep -r "type.*interface" --include="*.go"
-```
+**Technical Exploration** — search and run:
+- Run `gofmt -l . | grep -v "vendor/"` — check formatting
+- Pattern `^func [a-z]` in `*.go` files — find unexported funcs that may need export
+- Pattern `^type [a-z]` — find unexported types
+- Pattern `go func` in `*.go` files — find goroutine launches
+- Pattern `err :=` — find error assignments
+- Pattern `panic\(` — find panic usage in library code
+- Pattern `type.*interface` — find interface definitions
 
 #### Phase 2: Strategic Refactoring Plan (10-15 min)
 
@@ -146,7 +115,7 @@ Apply patterns systematically:
 - Use select for multiplexing
 - Avoid shared memory, prefer channels
 - Add sync.WaitGroup for coordination
-- Fix loop variable capture in goroutines
+- Fix loop variable capture in goroutines (only an issue pre-Go 1.22; check go.mod)
 
 **6. Pointers vs Values**
 - Use pointer receivers when modifying receiver
@@ -255,7 +224,7 @@ Apply patterns systematically:
 - [ ] Missing error checks
 - [ ] Errors ignored with _
 - [ ] Improper channel closing (receiver closes, or closing nil channel)
-- [ ] Loop variable captured in goroutine
+- [ ] Loop variable captured in goroutine (pre-Go 1.22 only — check go.mod)
 - [ ] Using new() for slices, maps, channels
 - [ ] Not assigning append() result
 
@@ -414,7 +383,7 @@ func processBatch(items []Item) error {
 
 	for _, item := range items {
 		wg.Add(1)
-		item := item // Capture variable
+		item := item // Capture variable (required pre-Go 1.22; unnecessary in 1.22+)
 
 		go func() {
 			defer wg.Done()
